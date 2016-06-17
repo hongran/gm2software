@@ -30,7 +30,8 @@ int main(int argc,char** argv)
   auto ChPos = make_shared<gm2_TRegBarcode>("Pos","Position");
   auto ChDir = make_shared<gm2_TRegBarcode>("Dir","Direction determination");
   auto ChAbs = make_shared<gm2_TAbsBarcode>("Abs","Absolute position");
-  double Ch1,Ch2,Ch3,Ch4;
+  double Ch1,Ch2,Ch3;
+  double Tension1,Tension2,V1,V2,P1,P2,O1,O2;
 
   //Read from file
   string FileName = string{argv[1]}+".txt";
@@ -41,14 +42,15 @@ int main(int argc,char** argv)
   while(!filein.eof()){
 //    filein>>T;
 //    filein.ignore(10,',');
-    filein>>Ch1;
+//    filein>>Ch1;
 //    filein.ignore(10,',');
-    filein>>Ch2;
+//    filein>>Ch2;
 //    filein.ignore(10,',');
-    filein>>Ch3;
+//    filein>>Ch3;
 //    filein.ignore(10,',');
-    filein>>Ch4;
+//    filein>>Ch4;
 //    filein.ignore(10,'\n');
+    filein>>Tension1>>Tension2>>V1>>V2>>P1>>P2>>O1>>O2>>Ch1>>Ch2>>Ch3;
     ChPos->SetPoint(i,i,Ch1);
     ChAbs->SetPoint(i,i,Ch2);
     ChDir->SetPoint(i,i,Ch3);
