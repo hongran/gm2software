@@ -67,6 +67,7 @@ class gm2_TBarcode : public TNamed
     shared_ptr<TGraph> GetRawGraph() const;
     shared_ptr<TGraph> GetLogicLevelGraph() const;
     shared_ptr<TGraph> GetExtremaGraph(TString Option) const;
+    shared_ptr<TGraph> GetIntervalGraph()const;
     
     //virtual method for determining the extrema
     virtual int FindExtrema() = 0;

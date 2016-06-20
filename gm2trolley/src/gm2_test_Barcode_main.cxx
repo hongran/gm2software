@@ -33,6 +33,9 @@ int main(int argc,char** argv)
   double Ch1,Ch2,Ch3;
   double Tension1,Tension2,V1,V2,P1,P2,O1,O2;
 
+  vector<double> PosList1,PosList2;
+  vector<double> Velocity1,Velocity2;
+
   //Read from file
   string FileName = string{argv[1]}+".txt";
   ifstream filein;
@@ -54,18 +57,38 @@ int main(int argc,char** argv)
     ChPos->SetPoint(i,i,Ch1);
     ChAbs->SetPoint(i,i,Ch2);
     ChDir->SetPoint(i,i,Ch3);
+    /*
+    ChPos->SetPoint(i,P1,Ch1);
+    ChAbs->SetPoint(i,P1,Ch2);
+    ChDir->SetPoint(i,P1,Ch3);
+    */
+    PosList1.push_back(P1);
+    PosList2.push_back(P2);
+    Velocity1.push_back(V1);
+    Velocity2.push_back(V2);
     i++;
   }
-  ChPos->SetThreshold(0.02);
+  ChPos->SetThreshold(0.005);
   ChPos->FindExtrema();
   ChPos->ConvertToLogic();
-  ChDir->SetThreshold(0.02);
+  ChDir->SetThreshold(0.005);
   ChDir->ConvertToLogic();
-  ChAbs->SetThreshold(0.02);
+  ChAbs->SetThreshold(0.005);
   ChAbs->ConvertToLogic();
   cout << ChPos->GetNLowLevels()<<" " << ChPos->GetNHighLevels()<<endl;
   cout << ChDir->GetNLowLevels()<<" " << ChDir->GetNHighLevels()<<endl;
   cout << ChAbs->GetNLowLevels()<<" " << ChAbs->GetNHighLevels()<<endl;
+
+  auto NExtremaPos = ChPos->GetNExtrema();
+  auto PosExtremaList = ChPos->GetExtremaList();
+  auto gPosCorrelation = make_shared<TGraph>(NExtremaPos);
+  for (int i=0;i<NExtremaPos;i++){
+    gPosCorrelation->SetPoint(i,PosList1[PosExtremaList[i]],i*4.0);
+//    gPosCorrelation->SetPoint(i,PosList1[PosExtremaList[i]],PosExtremaList[i]);
+  }
+  gPosCorrelation->SetName("PosCorrelation");
+  gPosCorrelation->SetTitle("Position correlation to encoder");
+
 
   auto gPosRaw = ChPos->GetRawGraph();
   auto gPosLog = ChPos->GetLogicLevelGraph();
@@ -82,6 +105,24 @@ int main(int argc,char** argv)
   auto gAbsRaw = ChAbs->GetRawGraph();
 //  auto gAbsLog = ChAbs->GetLogicLevelGraph();
 //  auto gAbsExt = ChAbs->GetExtremaGraph("VsX");
+
+  //Velocity
+  auto gPosInterval = ChPos->GetIntervalGraph();
+  auto gDirInterval = ChDir->GetIntervalGraph();
+
+  auto NPoints = Velocity1.size();
+  auto gVelocity1 = make_shared<TGraph>(NPoints);
+  auto gVelocity2 = make_shared<TGraph>(NPoints);
+  auto gPosition1 = make_shared<TGraph>(NPoints);
+  auto gPosition2 = make_shared<TGraph>(NPoints);
+  for (int j=0;j<NPoints;j++){
+//    gVelocity1->SetPoint(j,j,Velocity1[j]);
+//    gVelocity2->SetPoint(j,j,Velocity2[j]);
+    gVelocity1->SetPoint(j,j,Velocity1[j]);
+    gVelocity2->SetPoint(j,j,Velocity2[j]);
+    gPosition1->SetPoint(j,j,PosList1[j]);
+    gPosition2->SetPoint(j,j,PosList2[j]);
+  }
 
   TCanvas c1;
   gPosRaw->Draw("APL");
@@ -116,6 +157,14 @@ int main(int argc,char** argv)
   gDirExt->Write();
 
   gAbsRaw->Write();
+
+  gPosInterval->Write();
+  gDirInterval->Write();
+  gPosCorrelation->Write();
+  gVelocity1->Write();
+  gVelocity2->Write();
+  gPosition1->Write();
+  gPosition2->Write();
 
   c1.Write();
   c2.Write();

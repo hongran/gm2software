@@ -156,6 +156,22 @@ shared_ptr<TGraph> gm2_TBarcode::GetExtremaGraph(TString Option) const
 }
 
 /**********************************************************************/
+shared_ptr<TGraph> gm2_TBarcode::GetIntervalGraph() const
+{
+  if (!ExtremaFound){
+    cout << "Extrema for Barcode "<<fName<<" are not constructed!"<<endl;
+    return nullptr;
+  }
+  auto graph_ptr = make_shared<TGraph>(fNExtrema-1);
+  for (int i=0;i<fNExtrema-1;i++){
+    graph_ptr->SetPoint(i,fX[fExtremaList[i]],fX[fExtremaList[i+1]]-fX[fExtremaList[i]]);
+  }
+  graph_ptr->SetName("g"+fName+"_Interval");
+  graph_ptr->SetTitle(fTitle+"_Interval");
+  return graph_ptr;
+}
+
+/**********************************************************************/
 //Derived class TRegBarcode
 /**********************************************************************/
 gm2_TRegBarcode::gm2_TRegBarcode(const TString& Name, const TString& Title):gm2_TBarcode(Name,Title)
