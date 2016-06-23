@@ -24,13 +24,22 @@
 
 using namespace std;
 
+namespace gm2Barcode{
+  class LogicLevel{
+    public:
+    int Level;
+    int LEdge;	//Index of left edge
+    int REdge;	//Index of right edge
+  };
+}
+
 class gm2_TBarcode : public TNamed
 {
   //Attributes
   protected:
     vector<double> fX;	//time stamp
     vector<double> fY;  //barcode readout value
-    vector<int> fLogicLevels;	//logic levels converted from the analog signal
+    vector<gm2Barcode::LogicLevel> fLogicLevels;	//logic levels converted from the analog signal
     vector<int> fMaxList;	//List of maximum time stamps
     vector<int> fMinList;	//List of minimum time stamps
     vector<int> fExtremaList;	//List of extremum time stamps
@@ -63,15 +72,17 @@ class gm2_TBarcode : public TNamed
     vector<double> GetX() const{return fX;}
     vector<double> GetY() const{return fY;}
     vector<int> GetExtremaList() const{return fExtremaList;}
-    vector<int> GetLogicLevels() const{return fLogicLevels;}
+    vector<gm2Barcode::LogicLevel> GetLogicLevels() const{return fLogicLevels;}
     shared_ptr<TGraph> GetRawGraph() const;
     shared_ptr<TGraph> GetLogicLevelGraph() const;
     shared_ptr<TGraph> GetExtremaGraph(TString Option) const;
     shared_ptr<TGraph> GetIntervalGraph()const;
+    shared_ptr<TGraph> GetLevelWidthGraph()const;
     
     //virtual method for determining the extrema
     virtual int FindExtrema() = 0;
-    virtual int ConvertToLogic() = 0;
+    //virtual int ConvertToLogic() = 0;
+    int ConvertToLogic();
 };
 
 class gm2_TRegBarcode : public gm2_TBarcode
@@ -90,8 +101,6 @@ class gm2_TRegBarcode : public gm2_TBarcode
     shared_ptr<TGraph> GetContrastGraph() const;
     //method for determining the extrema
     int FindExtrema();
-    //Convert analog signal to logic levels
-    int ConvertToLogic();
 };
 
 class gm2_TAbsBarcode : public gm2_TBarcode
@@ -106,8 +115,6 @@ class gm2_TAbsBarcode : public gm2_TBarcode
     ~gm2_TAbsBarcode();
     //method for determining the extrema
     int FindExtrema();
-    //Convert analog signal to logic levels
-    int ConvertToLogic();
     int Decode(const gm2_TRegBarcode& RefReg);
 };
 

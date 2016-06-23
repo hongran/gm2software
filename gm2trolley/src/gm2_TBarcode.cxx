@@ -122,9 +122,10 @@ shared_ptr<TGraph> gm2_TBarcode::GetLogicLevelGraph() const
     cout << "Logic levels for Barcode "<<fName<<" are not constructed!"<<endl;
     return nullptr;
   }
-  auto graph_ptr = make_shared<TGraph>(fNPoints);
-  for (int i=0;i<fNPoints;i++){
-    graph_ptr->SetPoint(i,fX[i],fLogicLevels[i]);
+  auto graph_ptr = make_shared<TGraph>(2*fNExtrema);
+  for (int i=0;i<fNExtrema;i++){
+    graph_ptr->SetPoint(2*i,fX[fLogicLevels[i].LEdge],fLogicLevels[i].Level);
+    graph_ptr->SetPoint(2*i+1,fX[fLogicLevels[i].REdge],fLogicLevels[i].Level);
   }
 
   graph_ptr->SetName("g"+fName+"_LogicLevels");
@@ -168,6 +169,22 @@ shared_ptr<TGraph> gm2_TBarcode::GetIntervalGraph() const
   }
   graph_ptr->SetName("g"+fName+"_Interval");
   graph_ptr->SetTitle(fTitle+"_Interval");
+  return graph_ptr;
+}
+
+/**********************************************************************/
+shared_ptr<TGraph> gm2_TBarcode::GetLevelWidthGraph() const
+{
+  if (!ExtremaFound){
+    cout << "Extrema for Barcode "<<fName<<" are not constructed!"<<endl;
+    return nullptr;
+  }
+  auto graph_ptr = make_shared<TGraph>(fNExtrema-1);
+  for (int i=0;i<fNExtrema-1;i++){
+    graph_ptr->SetPoint(i,(fX[fLogicLevels[i].REdge]+fX[fLogicLevels[i].LEdge])/2.0,fX[fLogicLevels[i].REdge]-fX[fLogicLevels[i].LEdge]);
+  }
+  graph_ptr->SetName("g"+fName+"_LevelWidths");
+  graph_ptr->SetTitle(fTitle+"_LevelWidths");
   return graph_ptr;
 }
 
@@ -315,21 +332,17 @@ int gm2_TRegBarcode::FindExtrema()
 }
 
 /**********************************************************************/
-int gm2_TRegBarcode::ConvertToLogic()
+int gm2_TBarcode::ConvertToLogic()
 {
-  fLogicLevels.clear();
-  fLogicLevels.resize(fNPoints,-1); //Initialize to -1 for safety check
-  fNHighLevels = 0;
-  fNLowLevels = 0;
   //If extrema are not found, find them first
   if (!ExtremaFound){
     FindExtrema();
   }
-
-  //Initialize to -1, for error checking after processing the data
-  for (int i=0;i<fNPoints;i++){
-    fLogicLevels[i]=-1;
-  }
+  //Initialize
+  fLogicLevels.clear();
+  fLogicLevels.resize(fNExtrema,gm2Barcode::LogicLevel{-1,0,0}); //Initialize to -1 for safety check
+  fNHighLevels = 0;
+  fNLowLevels = 0;
 
   //Convert analog to lotic levels
   int Level = 0;
@@ -350,9 +363,10 @@ int gm2_TRegBarcode::ConvertToLogic()
     cout << "Encountered mismatching of Max/Min list and Extrema list."<<endl;
     return -1;
   }
-  for (int i=IndexLow;i<IndexHigh;i++){
+  fLogicLevels[0] = gm2Barcode::LogicLevel{Level,IndexLow,IndexHigh};
+/*  for (int i=IndexLow;i<IndexHigh;i++){
     fLogicLevels[i]=Level;
-  }
+  }*/
   //Alternating Level
   if (Level==0)Level=1;
   else if (Level==1)Level=0;
@@ -371,9 +385,11 @@ int gm2_TRegBarcode::ConvertToLogic()
       cout << "Error! fLogicLevels out of range!"<<endl;
       return -1;
     }
+    fLogicLevels[i] = gm2Barcode::LogicLevel{Level,IndexLow,IndexHigh};
+    /*
     for (int i=IndexLow;i<IndexHigh;i++){
       fLogicLevels[i]=Level;
-    }
+    }*/
     if (Level==0)Level=1;
     else if (Level==1)Level=0;
   }
@@ -386,9 +402,10 @@ int gm2_TRegBarcode::ConvertToLogic()
     IndexLow = FindHalfRise(fExtremaList[fNExtrema-2],fExtremaList[fNExtrema-1]);
     fNHighLevels++;
   }
-  for (int i=IndexLow;i<=IndexHigh;i++){
+  fLogicLevels[fNExtrema-1] = gm2Barcode::LogicLevel{Level,IndexLow,IndexHigh};
+/*  for (int i=IndexLow;i<=IndexHigh;i++){
     fLogicLevels[i]=Level;
-  }
+  }*/
 
   //Testing and throwing out warnings and errors
   if (fNExtrema!=(fNHighLevels+fNLowLevels)){
@@ -402,7 +419,7 @@ int gm2_TRegBarcode::ConvertToLogic()
     }
   }*/
   //Try using lambda
-  auto count = count_if(begin(fExtremaList), end(fExtremaList), [](int i){ return i==-1; } );
+  auto count = count_if(begin(fLogicLevels), end(fLogicLevels), [](gm2Barcode::LogicLevel i){ return i.Level==-1; } );
   if (count>0){
     cout <<"Error! fLogicLevels is not completely filled"<<endl;
     return -1;
@@ -427,18 +444,86 @@ gm2_TAbsBarcode::~gm2_TAbsBarcode()
 {}
 
 /**********************************************************************/
-int gm2_TAbsBarcode::FindExtrema()
+/*int gm2_TAbsBarcode::FindExtrema()
 {
   //Not yet developed
+  return 0;
+}*/
+int gm2_TAbsBarcode::FindExtrema()
+{
+  auto N = fX.size();
+  int MaxN = 0;
+  int MinN = 0;
+  fNExtrema = 0;
+  fMaxList.clear();
+  fMinList.clear();
+
+  //Read out values
+  double y1,y2;
+
+  //Contrast threshold method
+  //To determine a minimum or maximum, the depth of the peak of trough needs to be larger than the Threshold
+  int MaxIndex = 0;
+  double LocalMax = -1E6;
+  int MinIndex = 0;
+  double LocalMin = 1E6;
+
+  //Find initial trend
+  bool LastWasMax = false;
+  if(N > 4){
+    y1 = fY[0];
+    y2 = fY[4];
+    if(y1 > y2){
+      LastWasMax = true;
+    }else{
+      LastWasMax = false;
+    }
+  }else{
+    cout <<"Barcode length is too short."<<endl;
+    return -1;
+  }
+
+  for(int i=0; i<N-1; i++){
+    y1 = fY[i];
+    y2 = fY[i+1];
+
+    if(y1 < LocalMin && LastWasMax){
+      MinIndex = i;
+      LocalMin = y1;
+    }
+    if(y1 > LocalMax && !LastWasMax){
+      MaxIndex = i;
+      LocalMax = y1;
+    }
+
+    if(y1 > LocalMin && y2 > LocalMin+fThreshold && y2 > y1 && LastWasMax){
+      //	cout <<"min "<<MinIndex<<" "<<LocalMin<<endl;
+      fMinList.push_back(MinIndex);
+      fExtremaList.push_back(MinIndex);
+      MinN++;
+      LocalMin = 1E6;
+      LastWasMax = false;
+    }
+    if(y1 < LocalMax && y2 < LocalMax-fThreshold && y2 < y1 && !LastWasMax){
+      //	cout <<"max "<<MaxIndex<<" "<<LocalMax<<endl;
+      fMaxList.push_back(MaxIndex);
+      fExtremaList.push_back(MaxIndex);
+      MaxN++;
+      LocalMax = -1E6;
+      LastWasMax = true;
+    }
+  }
+  fNExtrema = MaxN + MinN;
+  ExtremaFound = true;
   return 0;
 }
 
 /**********************************************************************/
-int gm2_TAbsBarcode::ConvertToLogic()
+/*int gm2_TAbsBarcode::ConvertToLogic()
 {
   //Not yet developed
   return 0;
-}
+}*/
 
 /**********************************************************************/
 int gm2_TAbsBarcode::Decode(const gm2_TRegBarcode& RefReg)
