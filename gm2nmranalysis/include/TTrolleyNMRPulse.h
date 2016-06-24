@@ -1,3 +1,5 @@
+#ifndef __TTrolleyNMRPulse_h 
+#define __TTrolleyNMRPulse_h 
 /*
  * =====================================================================================
  *       Filename:  TTrolleyNMRPulse.h
@@ -28,18 +30,25 @@ using namespace std;
 class TTrolleyNMRPulse : public TNMRPulse {
  public:
   TTrolleyNMRPulse(const TString& Name = TString{"EmptyName"}, const TString& Title = TString{"EmptyTitle"});
-  TTrolleyNMRPulse(const TString& Name, const TString& Title, vector<double> fx, vector<double> fy);
+  TTrolleyNMRPulse(const TString& Name, const TString& Title, vector<double> fx, vector<double> fy, vector<double> fyerr);
   ~TTrolleyNMRPulse();
   
   // Set methods
-  void ReadNextPulse();
-  void SetFrequency(float f);
+  int ReadNextPulse();
+  void SetClockFrequency(float f);  // Set the trolley RF clock frequency in Hz
+  void SetClockFrequencyInMHz(float f);  // Set the trolley RF clock frequency providing MHz
   void SetInputFile(string input);
 
   // Get methods
-  
+
  private:
   string inputFileName;
   FILE *inputFile;
-  float frequency;   // Digitizer frequency
+  float ClockFrequency;   // RF clock frequency
+  float DigitizerFrequency;   // Digitizer frequency derived from clock frequency
+
+  // Private methods
+  void Initialize();
 };
+
+#endif
