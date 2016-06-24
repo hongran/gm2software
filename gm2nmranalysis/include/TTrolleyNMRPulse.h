@@ -4,7 +4,7 @@
  * =====================================================================================
  *       Filename:  TTrolleyNMRPulse.h
  *
- *    Description:  Class for reading and analyzing NMR data from the trolley
+ *    Description:  Class for reading and storing NMR data from the trolley
  *
  *        Version:  1.0
  *        Created:  06/23/2016
@@ -34,16 +34,14 @@ class TTrolleyNMRPulse : public TNMRPulse {
   ~TTrolleyNMRPulse();
   
   // Set methods
-  int ReadNextPulse();
   void SetClockFrequency(float f);  // Set the trolley RF clock frequency in Hz
   void SetClockFrequencyInMHz(float f);  // Set the trolley RF clock frequency providing MHz
-  void SetInputFile(string input);
 
   // Get methods
+  float GetClockFrequency() const { return ClockFrequency; };  // Get the trolley RF clock frequency in Hz
+  float GetDigitizerClockFrequency() const { return DigitizerFrequency; };  // Get the trolley digitizer frequency in Hz
 
  private:
-  string inputFileName;
-  FILE *inputFile;
   float ClockFrequency;   // RF clock frequency
   float DigitizerFrequency;   // Digitizer frequency derived from clock frequency
 

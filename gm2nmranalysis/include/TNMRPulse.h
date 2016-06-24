@@ -5,7 +5,7 @@
  * =====================================================================================
  *       Filename:  TNMRPulse.h
  *
- *    Description:  Class for reading and analyzing NMR data
+ *    Description:  Class for an NMR pulse
  *
  *        Version:  1.0
  *        Created:  06/23/2016
@@ -18,7 +18,7 @@
  the ROOT TNamed class. 
  
  * =====================================================================================
-*/
+ */
 
 #include <iostream>
 #include <stdio.h>
@@ -41,6 +41,7 @@ class TNMRPulse : public TNamed {
   int GetNPoints() const { return fNPoints; }
   vector<double> GetX() const { return fX; }
   vector<double> GetY() const { return fY; }
+  vector<double> GetYError() const { return fYErr; }
   shared_ptr<TGraphErrors> GetRawGraph() const;
 
  protected:

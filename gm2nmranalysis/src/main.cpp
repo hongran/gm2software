@@ -1,17 +1,17 @@
 #include "TNMRPulse.h"
-#include "TTrolleyNMRPulse.h"
+#include "TrolleyAnalysisManager.h"
 #include "TGraphErrors.h"
 #include "TCanvas.h"
 
 int main(){
-  TTrolleyNMRPulse *p = new TTrolleyNMRPulse;
+  TrolleyAnalysisManager *manager = new TrolleyAnalysisManager;
 
-  p->SetClockFrequencyInMHz(61.7);
-  p->SetInputFile(string{"data/data-nmr-Run1.dat"});
+  manager->GetPulse()->SetClockFrequencyInMHz(61.7);
+  manager->SetInputFile(string{"data/data-nmr-Run1.dat"});
 
-  p->ReadNextPulse();
+  manager->ReadNextPulse();
 
-  shared_ptr<TGraphErrors> g = p->GetRawGraph();
+  shared_ptr<TGraphErrors> g = manager->GetPulse()->GetRawGraph();
   TCanvas *c = new TCanvas();
 
   g->Draw("AP");
