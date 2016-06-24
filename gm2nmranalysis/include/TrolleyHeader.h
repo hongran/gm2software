@@ -1,4 +1,5 @@
-typedef struct __attribute__((__packed__)) _Packet_Header {	// NOTE: Group fields are listed from MSB to LSB, need packing attribute to avoid padding and hence misalignment
+typedef struct __attribute__((__packed__)) _Packet_Header {	
+  // NOTE: Group fields are listed from MSB to LSB, need packing attribute to avoid padding and hence misalignment
   unsigned int	 fixed_value1;	// Should be 0x80007FFF, if this is properly aligned.
   unsigned int	 fixed_value2;	// Should be 0x80007FFF, if this is properly aligned.
   unsigned int	 fixed_value3;	// Should be 0x80007FFF, if this is properly aligned.
@@ -10,6 +11,7 @@ typedef struct __attribute__((__packed__)) _Packet_Header {	// NOTE: Group field
   unsigned short nmr_samples;
   unsigned short rest[50];
 } Packet_Header;
+
 
 typedef struct _Trolley_Packet {
   Packet_Header	header;		// Packet header

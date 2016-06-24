@@ -58,8 +58,6 @@ int TrolleyAnalysisManager::ReadNextPulse(){
 	 header.fixed_value3 == 0x80007FFF &&
 	 header.fixed_value4 == 0xAAAA){
 	
-	cout << "New header found" << endl;
-
 	// We have found a header, so we can decode the data
 	Nsamples = header.nmr_samples;
 	if(Nsamples == 0) return -3;

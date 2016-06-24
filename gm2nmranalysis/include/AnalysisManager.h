@@ -17,11 +17,7 @@
  * =====================================================================================
  */
 
-#include <iostream>
-#include <stdio.h>
-#include <TString.h>
-#include "TNamed.h"
-#include "TNMRPulse.h"
+#include <memory>
 
 using namespace std;
 
@@ -31,6 +27,7 @@ template <class Pulse> class AnalysisManager {
 
   // Set methods
   virtual void SetPulse(shared_ptr<Pulse> p) = 0;
+  virtual void SetVerbosityLevel(int verbose) = 0;
 
   // Get methods
   virtual int ReadNextPulse() = 0;
@@ -38,6 +35,8 @@ template <class Pulse> class AnalysisManager {
   
  protected:
   shared_ptr<Pulse> nmrPulse;
+
+  int verbosityLevel;
 };
 
 #endif 

@@ -17,8 +17,6 @@
  * =====================================================================================
  */
 
-#include <iostream>
-#include <stdio.h>
 #include "AnalysisManager.h"
 #include "TTrolleyNMRPulse.h"
 
@@ -34,6 +32,7 @@ class TrolleyAnalysisManager : public AnalysisManager<TTrolleyNMRPulse>{
   // Set methods
   virtual void SetPulse(shared_ptr<TTrolleyNMRPulse> p);
   void SetInputFile(string input);
+  virtual void SetVerbosityLevel(int verbose){ verbosityLevel = verbose; };
 
   // Get methods
   virtual int ReadNextPulse();
