@@ -9,7 +9,7 @@
  *        Version:  1.0
  *        Created:  06/23/2016
  *       Revision:  none
- *       Compiler:  gcc
+ *       Compiler:  g++
  *
  *         Author:  Peter Winter
  *   Organization:  ANL

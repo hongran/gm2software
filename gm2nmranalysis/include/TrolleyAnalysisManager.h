@@ -10,7 +10,7 @@
  *        Version:  1.0
  *        Created:  06/24/2016
  *       Revision:  none
- *       Compiler:  gcc
+ *       Compiler:  g++
  *
  *         Author:  Peter Winter
  *   Organization:  ANL
@@ -19,15 +19,15 @@
 
 #include "AnalysisManager.h"
 #include "TTrolleyNMRPulse.h"
+#include "TrolleyAnalysisAlgorithm.h"
 
 using namespace std;
 
-class TrolleyAnalysisManager : public AnalysisManager<TTrolleyNMRPulse>{
+class TrolleyAnalysisManager : public AnalysisManager<TTrolleyNMRPulse, 
+  TrolleyAnalysisAlgorithm>{
  public:
   TrolleyAnalysisManager();
   ~TrolleyAnalysisManager();
-
-  void Initialize();
 
   // Set methods
   virtual void SetPulse(shared_ptr<TTrolleyNMRPulse> p);
@@ -41,6 +41,8 @@ class TrolleyAnalysisManager : public AnalysisManager<TTrolleyNMRPulse>{
  protected:
   string inputFileName;
   FILE *inputFile;
+
+  virtual void Initialize();
 };
 
 #endif 
