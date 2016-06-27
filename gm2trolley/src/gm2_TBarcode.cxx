@@ -36,6 +36,7 @@ gm2_TBarcode::gm2_TBarcode(const TString& Name, const TString& Title) : TNamed(N
   fNLowLevels = 0;            //Number of low levels
   fNExtrema = 0;              //Number o extrema
   fThreshold = 0.5;           //Threshold
+  fLogicLevelScale = 1.0;     //By default, logic-1 is "1"
   //Flags
   LogicLevelConverted = false;   //Whether logic levels are converted
   ExtremaFound = false;		//Whether Extrema are found
@@ -82,6 +83,17 @@ void gm2_TBarcode::SetPoint(const int i, const double x,const double y)
 }
 
 /**********************************************************************/
+void gm2_TBarcode::SetDirection(const vector<int> ExternalDirectionList)
+{
+  fDirectionList = ExternalDirectionList;
+  if (ExternalDirectionList.size()!=fNPoints){
+    cout << "Warning! Direction list has a different size. Auto resized to fNpoints."<<endl;
+    fDirectionList.resize(fNPoints,0);
+  }
+  DirectionSet = true;
+}
+
+/**********************************************************************/
 int gm2_TBarcode::FindHalfRise(int low, int high)
 {
   double Difference = fY[high]-fY[low];
@@ -104,11 +116,11 @@ int gm2_TBarcode::FindHalfFall(int high, int low)
 }
 
 /**********************************************************************/
-shared_ptr<TGraph> gm2_TBarcode::GetRawGraph() const
+shared_ptr<TGraph> gm2_TBarcode::GetRawGraph(double shift) const
 {
   auto graph_ptr = make_shared<TGraph>(fNPoints);
   for (int i=0;i<fNPoints;i++){
-    graph_ptr->SetPoint(i,fX[i],fY[i]);
+    graph_ptr->SetPoint(i,fX[i]+shift,fY[i]);
   }
   graph_ptr->SetName("g"+fName);
   graph_ptr->SetTitle(fTitle);
@@ -116,7 +128,7 @@ shared_ptr<TGraph> gm2_TBarcode::GetRawGraph() const
 }
 
 /**********************************************************************/
-shared_ptr<TGraph> gm2_TBarcode::GetLogicLevelGraph() const
+shared_ptr<TGraph> gm2_TBarcode::GetLogicLevelGraph(double shift) const
 {
   if (!LogicLevelConverted){
     cout << "Logic levels for Barcode "<<fName<<" are not constructed!"<<endl;
@@ -124,8 +136,8 @@ shared_ptr<TGraph> gm2_TBarcode::GetLogicLevelGraph() const
   }
   auto graph_ptr = make_shared<TGraph>(2*fNExtrema);
   for (int i=0;i<fNExtrema;i++){
-    graph_ptr->SetPoint(2*i,fX[fLogicLevels[i].LEdge],fLogicLevels[i].Level);
-    graph_ptr->SetPoint(2*i+1,fX[fLogicLevels[i].REdge],fLogicLevels[i].Level);
+    graph_ptr->SetPoint(2*i,fX[fLogicLevels[i].LEdge]+shift,fLogicLevels[i].Level*fLogicLevelScale);
+    graph_ptr->SetPoint(2*i+1,fX[fLogicLevels[i].REdge]+shift,fLogicLevels[i].Level*fLogicLevelScale);
   }
 
   graph_ptr->SetName("g"+fName+"_LogicLevels");
@@ -134,7 +146,7 @@ shared_ptr<TGraph> gm2_TBarcode::GetLogicLevelGraph() const
 }
 
 /**********************************************************************/
-shared_ptr<TGraph> gm2_TBarcode::GetExtremaGraph(TString Option) const
+shared_ptr<TGraph> gm2_TBarcode::GetExtremaGraph(TString Option,double shift) const
 {
   if (!ExtremaFound){
     cout << "Extrema for Barcode "<<fName<<" are not constructed!"<<endl;
@@ -143,9 +155,9 @@ shared_ptr<TGraph> gm2_TBarcode::GetExtremaGraph(TString Option) const
   auto graph_ptr = make_shared<TGraph>(fNExtrema);
   for (int i=0;i<fNExtrema;i++){
     if (Option.CompareTo("VsIndex")==0){
-      graph_ptr->SetPoint(i,i,fY[fExtremaList[i]]);
+      graph_ptr->SetPoint(i,i+shift,fY[fExtremaList[i]]);
     }else if (Option.CompareTo("VsX")==0){
-      graph_ptr->SetPoint(i,fX[fExtremaList[i]],fY[fExtremaList[i]]);
+      graph_ptr->SetPoint(i,fX[fExtremaList[i]]+shift,fY[fExtremaList[i]]);
     }else{
       cout << "Option "<<Option<<" is not identified. Set to VsX."<<endl;
       graph_ptr->SetPoint(i,fX[i],fY[i]);
@@ -433,11 +445,17 @@ int gm2_TBarcode::ConvertToLogic()
 //Derived class TAbsBarcode
 /**********************************************************************/
 gm2_TAbsBarcode::gm2_TAbsBarcode(const TString& Name, const TString& Title):gm2_TBarcode(Name,Title)
-{}
+{
+  fNSegments = 0;
+  fSegmented = false;
+}
 
 /**********************************************************************/
 gm2_TAbsBarcode::gm2_TAbsBarcode(const TString& Name, const TString& Title, vector<double> fx, vector<double> fy):gm2_TBarcode(Name,Title,fx,fy)
-{}
+{
+  fNSegments = 0;
+  fSegmented = false;
+}
 
 /**********************************************************************/
 gm2_TAbsBarcode::~gm2_TAbsBarcode()
@@ -526,7 +544,117 @@ int gm2_TAbsBarcode::FindExtrema()
 }*/
 
 /**********************************************************************/
-int gm2_TAbsBarcode::Decode(const gm2_TRegBarcode& RefReg)
+int gm2_TAbsBarcode::ChopSegments(const gm2_TRegBarcode& RefReg)
+{
+  //Clean up the previous segmentations
+  if (fSegmented){
+    fSegmentList.clear();
+    fAuxList.clear();
+    fSegmented=false;
+  }
+  //Check if the logic levels are converted
+  if (!LogicLevelConverted){
+    ConvertToLogic();
+  }
+  if (!RefReg.IfLogicLevelConverted()){
+    cout <<"Error! Reference RegBarcode is not yet converted to Logic levels."<<endl;
+    return -1;
+  }
+  fAuxList.resize(fNExtrema);
+
+  //Get Logic level list from RefReg
+  auto RefLevels = RefReg.GetLogicLevels();
+  auto NRefLevels = RefLevels.size();
+  int i{0};
+  int j{0};
+  while (i<fNExtrema && j<NRefLevels){
+    auto LeftBound = fLogicLevels[i].LEdge;
+    auto RightBound = fLogicLevels[i].REdge;
+    while (j<NRefLevels){
+      if (RefLevels[j].REdge<LeftBound){
+	j++;
+	continue;
+      }else{
+	fAuxList[i].push_back(RefLevels[j]);
+	if (RefLevels[j].REdge<RightBound){
+	  j++;
+	  continue;
+	}else{
+	  break;
+	}
+      }
+    }
+    i++;
+  }
+  
+  //Constructs segments
+  i=0;
+  while (i<fNExtrema){
+    int NLevelsRef = fAuxList[i].size();
+    if (NLevelsRef>=16 && NLevelsRef<=20){
+      fSegmentList.push_back(gm2Barcode::AbsBarcodeSegment{false,-1,1,NLevelsRef,vector<int>{i},fAuxList[i]});
+      i++;
+      continue;
+    }else{
+      vector<int> TempAbsList;
+      vector<gm2Barcode::LogicLevel> TempRegList;
+      while (i<fNExtrema){
+	int NLevelsRef = fAuxList[i].size();
+	if (NLevelsRef>=16 && NLevelsRef<=20)break;
+	TempAbsList.push_back(i);
+	for (j=0;j<fAuxList[i].size();j++){
+	  if (TempRegList.size()!=0){
+	    if ((TempRegList.back().LEdge==fAuxList[i][j].LEdge) && (TempRegList.back().REdge==fAuxList[i][j].REdge)){
+	      continue;
+	    }
+	  }
+	  TempRegList.push_back(fAuxList[i][j]);
+	}
+	i++;
+      }
+      fSegmentList.push_back(gm2Barcode::AbsBarcodeSegment{true,-1,static_cast<int>(TempAbsList.size()),static_cast<int>(TempRegList.size()),TempAbsList,TempRegList});
+    }
+  }
+
+  fNSegments = fSegmentList.size();
+  fSegmented=true;
+  return 0;
+}
+
+/**********************************************************************/
+shared_ptr<TGraph> gm2_TAbsBarcode::GetAbsWidthGraph() const
+{
+  if (!fSegmented){
+    cout << "Abs Barcode "<<fName<<" is not segmented!"<<endl;
+    return nullptr;
+  }
+  auto graph_ptr = make_shared<TGraph>(fNExtrema);
+  for (int i=0;i<fNExtrema;i++){
+    graph_ptr->SetPoint(i,(fX[fLogicLevels[i].REdge]+fX[fLogicLevels[i].LEdge])/2.0,fAuxList[i].size());
+  }
+  graph_ptr->SetName("g"+fName+"_AbsWidths");
+  graph_ptr->SetTitle(fTitle+"_AbsWidths");
+  return graph_ptr;
+}
+
+/**********************************************************************/
+shared_ptr<TGraph> gm2_TAbsBarcode::GetAbsSegWidthGraph() const
+{
+  if (!fSegmented){
+    cout << "Abs Barcode "<<fName<<" is not segmented!"<<endl;
+    return nullptr;
+  }
+  auto graph_ptr = make_shared<TGraph>(fNSegments);
+  for (int i=0;i<fNSegments;i++){
+    graph_ptr->SetPoint(i,i,fSegmentList[i].NRegLevel);
+  }
+  graph_ptr->SetName("g"+fName+"_AbsSegWidths");
+  graph_ptr->SetTitle(fTitle+"_AbsSegWidths");
+  return graph_ptr;
+}
+
+/**********************************************************************/
+int gm2_TAbsBarcode::Decode()
 {
   //Not yet developed
   return 0;

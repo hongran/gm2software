@@ -73,6 +73,10 @@ int main(int argc,char** argv)
       ChPos->SetPoint(iBarcode,Time-Time0B,Ch1);
       ChAbs->SetPoint(iBarcode,Time-Time0B,Ch2);
       ChDir->SetPoint(iBarcode,Time-Time0B,Ch3);
+/*      ChPos->SetPoint(iBarcode,Time-Time0B,Ch1);
+      ChAbs->SetPoint(iBarcode,Time-Time0B,Ch2);
+      ChDir->SetPoint(iBarcode,Time-Time0B,Ch3);
+      */
       iBarcode++;
     }
     /*
@@ -93,9 +97,14 @@ int main(int argc,char** argv)
   ChAbs->SetThreshold(0.06);
   ChAbs->FindExtrema();
   ChAbs->ConvertToLogic();
+  ChAbs->ChopSegments(*ChPos);
   cout << ChPos->GetNLowLevels()<<" " << ChPos->GetNHighLevels()<<endl;
   cout << ChDir->GetNLowLevels()<<" " << ChDir->GetNHighLevels()<<endl;
   cout << ChAbs->GetNLowLevels()<<" " << ChAbs->GetNHighLevels()<<endl;
+  //Set Logic Level Scale
+  ChPos->SetLogicLevelScale(0.4);
+  ChDir->SetLogicLevelScale(0.4);
+  ChAbs->SetLogicLevelScale(0.4);
 
   auto NExtremaPos = ChPos->GetNExtrema();
   auto PosExtremaList = ChPos->GetExtremaList();
@@ -108,7 +117,7 @@ int main(int argc,char** argv)
   gPosCorrelation->SetTitle("Position correlation to encoder");
 
 
-  auto gPosRaw = ChPos->GetRawGraph();
+  auto gPosRaw = ChPos->GetRawGraph(250);
   auto gPosLog = ChPos->GetLogicLevelGraph();
   auto gPosAve = ChPos->GetAverageGraph();
   auto gPosCon = ChPos->GetContrastGraph();
@@ -120,12 +129,15 @@ int main(int argc,char** argv)
   auto gDirCon = ChDir->GetContrastGraph();
   auto gDirExt = ChDir->GetExtremaGraph("VsX");
 
-  auto gAbsRaw = ChAbs->GetRawGraph();
+  auto gAbsRaw = ChAbs->GetRawGraph(250);
   auto gAbsExt = ChAbs->GetExtremaGraph("VsX");
   auto gAbsLog = ChAbs->GetLogicLevelGraph();
+  auto gAbsWidth = ChAbs->GetAbsWidthGraph();
+  auto gAbsSegWidth = ChAbs->GetAbsSegWidthGraph();
 
   //Velocity
   auto gPosInterval = ChPos->GetIntervalGraph();
+  auto gPosLevelWidth= ChPos->GetLevelWidthGraph();
   auto gDirInterval = ChDir->GetIntervalGraph();
   auto gAbsLevelWidth = ChAbs->GetLevelWidthGraph();
 
@@ -142,6 +154,24 @@ int main(int argc,char** argv)
     gPosition1->SetPoint(j,j,PosList1[j]);
     gPosition2->SetPoint(j,j,PosList2[j]);
   }
+  
+  //Calculate position resolution
+  auto NInterval = gPosInterval->GetN();
+  double average{0};
+  double average2{0};
+  int k{0};
+  for (int i=NInterval/10;i<NInterval*4/10;i++){
+    double x,y;
+    gPosInterval->GetPoint(i,x,y);
+    average+=y;
+    average2+=y*y;
+    k++;
+  }
+  average/=k;
+  average2/=k;
+  cout << "average interval = "<<average<<endl;
+  cout << "RMS = "<<sqrt(average2-average*average)<<endl;
+
 
   TCanvas c1;
   gPosRaw->Draw("APL");
@@ -152,21 +182,22 @@ int main(int argc,char** argv)
   gAbsRaw->SetLineColor(kRed);
 
 
-  TCanvas c2;
+  TCanvas c2("c2");
   gPosRaw->Draw("APL");
   gPosExt->Draw("sameP");
+  gPosLog->Draw("sameL");
   gPosExt->SetMarkerStyle(20);
   gPosExt->SetMarkerSize(1);
-  gPosExt->SetMarkerColor(kRed);
+  gPosExt->SetMarkerColor(kGreen);
 
-  TCanvas c3;
+  TCanvas c3("c3");
   gDirRaw->Draw("APL");
   gDirExt->Draw("sameP");
   gDirExt->SetMarkerStyle(20);
   gDirExt->SetMarkerSize(1);
   gDirExt->SetMarkerColor(kRed);
 
-  TCanvas c4;
+  TCanvas c4("c4");
   gAbsRaw->Draw("APL");
   gAbsRaw->SetLineColor(kGreen);
   gAbsExt->Draw("sameP");
@@ -175,6 +206,14 @@ int main(int argc,char** argv)
   gAbsExt->SetMarkerColor(kRed);
   gAbsLog->Draw("sameL");
   gAbsLog->SetLineColor(kBlue);
+
+  TCanvas c5("c5");
+  gAbsLog->Draw("APL");
+  gAbsLog->SetLineColor(kBlue);
+  gAbsLog->SetLineWidth(4);
+  gPosLog->Draw("sameL");
+  gPosLog->SetLineWidth(2);
+  gPosLog->SetLineColor(kRed);
 
   TFile* output = new TFile((string{argv[1]}+".root").c_str(),"recreate");
   ChPos->Write();
@@ -195,10 +234,13 @@ int main(int argc,char** argv)
   gAbsRaw->Write();
   gAbsLog->Write();
   gAbsExt->Write();
+  gAbsWidth->Write();
+  gAbsSegWidth->Write();
 
   gPosInterval->Write();
   gDirInterval->Write();
   gAbsLevelWidth->Write();
+  gPosLevelWidth->Write();
   gPosCorrelation->Write();
   gVelocity1->Write();
   gVelocity2->Write();
@@ -209,6 +251,7 @@ int main(int argc,char** argv)
   c2.Write();
   c3.Write();
   c4.Write();
+  c5.Write();
   output->Close();
   return 0;
 }
