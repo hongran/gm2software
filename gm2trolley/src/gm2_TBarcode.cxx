@@ -723,9 +723,61 @@ shared_ptr<TGraph> gm2_TAbsBarcode::GetAbsSegWidthGraph() const
 int gm2_TAbsBarcode::Decode()
 {
   //Not yet developed
-  for (int i=0; i<fSegmentList.size(); ++i){
-  	vector<int> AbsIndexList = fSegmentList[i].fLevelIndexList;
-  	fSegmentList.fRegLevelList;
+  for (int i=0; i<fNSegments; ++i){
+  	auto AbsIndexList = fSegmentList[i].fLevelIndexList;
+  	auto RegLevelList = fSegmentList[i].fRegLevelList;
+  	RegLevelList.erase(RegLevelList.begin()); //Remove first element
+  	RegLevelList.pop_back();                  //Remove last element
+  	vector<int> DigitMap(RegLevelList.size(),-1); //Temporarily save the digits from the absolute barcode
+  	
+  	for (int j=0; j<RegLevelList.size(); ++j){
+  		auto RegLevelUnit = RegLevelList[j];
+  		for (int k=0; k<AbsIndexList.size(); ++k){
+  			auto AbsLevelIndex = AbsIndexList[k];
+  			auto AbsLevelUnit = fLogicLevels[AbsLevelIndex];
+  			
+  			if (RegLevelUnit.REdge <= AbsLevelUnit.LEdge){
+  				continue;
+  			}else if(AbsLevelUnit.REdge <= RegLevelUnit.LEdge){
+  				continue;
+  			}else if(RegLevelUnit.LEdge <= AbsLevelUnit.LEdge && AbsLevelUnit.REdge <= RegLevelUnit.REdge){
+  				DigitMap[j] = AbsLevelUnit.Level;
+  				break;
+  			}else if(RegLevelUnit.LEdge >= AbsLevelUnit.LEdge && AbsLevelUnit.REdge >= RegLevelUnit.REdge){
+  				DigitMap[j] = AbsLevelUnit.Level;
+  				break;
+  			}else if(RegLevelUnit.LEdge < AbsLevelUnit.LEdge && RegLevelUnit.REdge > AbsLevelUnit.LEdge && RegLevelUnit.REdge < AbsLevelUnit.REdge){
+  				double OverlapRatio = (fX[RegLevelUnit.REdge]-fX[AbsLevelUnit.LEdge])/(fX[RegLevelUnit.REdge]-fX[RegLevelUnit.LEdge]);
+  				if (OverlapRatio < 0.5){
+  					continue;
+  				}
+  				if (OverlapRatio >= 0.5){
+  					DigitMap[j] = AbsLevelUnit.Level;
+  					break;
+  				}
+  			}else if(RegLevelUnit.LEdge > AbsLevelUnit.LEdge && RegLevelUnit.LEdge < AbsLevelUnit.REdge && RegLevelUnit.REdge > AbsLevelUnit.REdge){
+  			  	double OverlapRatio = (fX[AbsLevelUnit.REdge]-fX[RegLevelUnit.LEdge])/(fX[RegLevelUnit.REdge]-fX[RegLevelUnit.LEdge]);
+  				if (OverlapRatio < 0.5){
+  					continue;
+  				}
+  				if (OverlapRatio >= 0.5){
+  					DigitMap[j] = AbsLevelUnit.Level;
+  					break;
+  				}
+  			}else{
+  				cout << "Error! in Decode Function an exception case occured." << endl;
+  				cout << "Regular Left: " << fX[RegLevelUnit.LEdge] << endl;
+  				cout << "Regular Right: " << fX[RegLevelUnit.REdge] << endl;
+  				cout << "Absolute Left: " << fX[AbsLevelUnit.LEdge] << endl;
+  				cout << "Absolute Right: " << fX[AbsLevelUnit.REdge] << endl;
+  				return -1;
+  			}
+  			
+  		}
+  	}
+  	DigitMap.erase(DigitMap.begin()); //Delete first element
+  	DigitMap.pop_back();              //Delete last element
+  	  
   }
   return 0;
 }
