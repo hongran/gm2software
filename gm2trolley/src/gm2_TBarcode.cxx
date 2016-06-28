@@ -169,6 +169,23 @@ shared_ptr<TGraph> gm2_TBarcode::GetExtremaGraph(TString Option,double shift) co
 }
 
 /**********************************************************************/
+shared_ptr<TGraph> gm2_TBarcode::GetDirectionGraph(double shift) const
+{
+  if (!DirectionSet){
+    cout << "Direction is not set."<<endl;
+    return nullptr;
+  }
+  auto graph_ptr = make_shared<TGraph>(fNPoints);
+  for (int i=0;i<fNPoints;i++){
+    graph_ptr->SetPoint(i,fX[i]+shift,fDirectionList[i]);
+  }
+
+  graph_ptr->SetName("g"+fName+"_Direction");
+  graph_ptr->SetTitle(fTitle+"_Direction");
+  return graph_ptr;
+}
+
+/**********************************************************************/
 shared_ptr<TGraph> gm2_TBarcode::GetIntervalGraph() const
 {
   if (!ExtremaFound){
@@ -187,17 +204,46 @@ shared_ptr<TGraph> gm2_TBarcode::GetIntervalGraph() const
 /**********************************************************************/
 shared_ptr<TGraph> gm2_TBarcode::GetLevelWidthGraph() const
 {
-  if (!ExtremaFound){
-    cout << "Extrema for Barcode "<<fName<<" are not constructed!"<<endl;
+  if (!LogicLevelConverted){
+    cout <<"Not yet converted to Logic levels."<<endl;
     return nullptr;
   }
   auto graph_ptr = make_shared<TGraph>(fNExtrema-1);
-  for (int i=0;i<fNExtrema-1;i++){
+  for (int i=0;i<fNExtrema;i++){
     graph_ptr->SetPoint(i,(fX[fLogicLevels[i].REdge]+fX[fLogicLevels[i].LEdge])/2.0,fX[fLogicLevels[i].REdge]-fX[fLogicLevels[i].LEdge]);
   }
   graph_ptr->SetName("g"+fName+"_LevelWidths");
   graph_ptr->SetTitle(fTitle+"_LevelWidths");
   return graph_ptr;
+}
+
+/**********************************************************************/
+shared_ptr<TH1D> gm2_TBarcode::GetLevelWidthHist(string LevelSelection)const
+{
+  if (!LogicLevelConverted){
+    cout <<"Not yet converted to Logic levels."<<endl;
+    return nullptr;
+  }
+  bool IncludeHigh{false},IncludeLow{false};
+  if (LevelSelection.compare("High")==0)IncludeHigh=true;
+  else if (LevelSelection.compare("Low")==0)IncludeLow=true;
+  else if (LevelSelection.compare("Both")==0){
+    IncludeHigh=true;
+    IncludeLow=true;
+  }else{
+    cout <<"Non-recognized option "<<LevelSelection<<". Set to Both."<<endl;
+    LevelSelection="Both";
+    IncludeHigh=true;
+    IncludeLow=true;
+  }
+  auto Name = string{"Hist_"+fName+LevelSelection+"_LevelWidths"};
+  double Upperlimit = 5*(fX[fLogicLevels[4].REdge]-fX[fLogicLevels[4].LEdge]);
+  auto hist_ptr = make_shared<TH1D>(Name.c_str(),Name.c_str(),100,0,Upperlimit);
+  for (int i=0;i<fNExtrema;i++){
+    if(IncludeHigh && (fLogicLevels[i].Level==1))hist_ptr->Fill(fX[fLogicLevels[i].REdge]-fX[fLogicLevels[i].LEdge]);
+    if(IncludeLow && (fLogicLevels[i].Level==0))hist_ptr->Fill(fX[fLogicLevels[i].REdge]-fX[fLogicLevels[i].LEdge]);
+  }
+  return hist_ptr;
 }
 
 /**********************************************************************/

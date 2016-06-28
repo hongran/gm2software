@@ -21,6 +21,7 @@
 #include <TString.h>
 #include <map>
 #include <memory>
+#include <TH1.h>
 
 using namespace std;
 
@@ -93,8 +94,10 @@ class gm2_TBarcode : public TNamed
     shared_ptr<TGraph> GetRawGraph(double shift=0) const;
     shared_ptr<TGraph> GetLogicLevelGraph(double shift=0) const;
     shared_ptr<TGraph> GetExtremaGraph(TString Option,double shift=0) const;
+    shared_ptr<TGraph> GetDirectionGraph(double shift=0) const;
     shared_ptr<TGraph> GetIntervalGraph()const;
     shared_ptr<TGraph> GetLevelWidthGraph()const;
+    shared_ptr<TH1D> GetLevelWidthHist(string LevelSelection)const;
     
     //virtual method for determining the extrema
     virtual int FindExtrema() = 0;

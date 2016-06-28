@@ -117,11 +117,13 @@ int main(int argc,char** argv)
   gPosCorrelation->SetTitle("Position correlation to encoder");
 
 
-  auto gPosRaw = ChPos->GetRawGraph(250);
+  auto gPosRaw = ChPos->GetRawGraph();
   auto gPosLog = ChPos->GetLogicLevelGraph();
   auto gPosAve = ChPos->GetAverageGraph();
   auto gPosCon = ChPos->GetContrastGraph();
   auto gPosExt = ChPos->GetExtremaGraph("VsX");
+  auto hPosHWidth = ChPos->GetLevelWidthHist("High");
+  auto hPosLWidth = ChPos->GetLevelWidthHist("Low");
 
   auto gDirRaw = ChDir->GetRawGraph();
   auto gDirLog = ChDir->GetLogicLevelGraph();
@@ -129,11 +131,42 @@ int main(int argc,char** argv)
   auto gDirCon = ChDir->GetContrastGraph();
   auto gDirExt = ChDir->GetExtremaGraph("VsX");
 
-  auto gAbsRaw = ChAbs->GetRawGraph(250);
+  auto gAbsRaw = ChAbs->GetRawGraph();
   auto gAbsExt = ChAbs->GetExtremaGraph("VsX");
   auto gAbsLog = ChAbs->GetLogicLevelGraph();
   auto gAbsWidth = ChAbs->GetAbsWidthGraph();
   auto gAbsSegWidth = ChAbs->GetAbsSegWidthGraph();
+
+  //Determine direction
+  auto PosLevelList = ChPos->GetLogicLevels();
+  auto DirLevelList = ChDir->GetLogicLevels();
+  auto NLevels = PosLevelList.size();
+  auto NLevelsDir = DirLevelList.size();
+  vector<int> AuxDirectionList(NLevels,0);
+  for (int i=0;i<NLevels;i++){
+    for (int j=i-2;j<=i+2;j++){
+      if (j>=0 && j<=NLevelsDir){
+	if (DirLevelList[j].REdge>PosLevelList[i].LEdge && DirLevelList[j].REdge<PosLevelList[i].REdge){
+	  if (DirLevelList[j].Level==PosLevelList[i].Level){
+	    AuxDirectionList[i]=-1;
+	  }else{
+	    AuxDirectionList[i]=1;
+	  }
+	  break;
+	}
+      }
+    } 
+  }
+  vector<int> DirectionList(ChPos->GetNPoints(),0);
+  for (int i=0;i<NLevels;i++){
+    for (int j=PosLevelList[i].LEdge;j<=PosLevelList[i].REdge;j++){
+      DirectionList[j]=AuxDirectionList[i];
+    }
+  }
+  ChPos->SetDirection(DirectionList);
+  ChAbs->SetDirection(DirectionList);
+
+  auto gAbsDirection = ChAbs->GetDirectionGraph();
 
   //Velocity
   auto gPosInterval = ChPos->GetIntervalGraph();
@@ -236,6 +269,7 @@ int main(int argc,char** argv)
   gAbsExt->Write();
   gAbsWidth->Write();
   gAbsSegWidth->Write();
+  gAbsDirection->Write();
 
   gPosInterval->Write();
   gDirInterval->Write();
@@ -246,6 +280,9 @@ int main(int argc,char** argv)
   gVelocity2->Write();
   gPosition1->Write();
   gPosition2->Write();
+
+  hPosHWidth->Write();
+  hPosLWidth->Write();
 
   c1.Write();
   c2.Write();
