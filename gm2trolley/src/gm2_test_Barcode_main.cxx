@@ -21,6 +21,7 @@
 #include <string>
 #include <memory>
 #include "gm2_TBarcode.h"
+#include "gm2_TEncoder.h"
 #include "TCanvas.h"
 #include "TFile.h"
 
@@ -31,13 +32,11 @@ int main(int argc,char** argv)
   auto ChPos = make_shared<gm2_TRegBarcode>("Pos","Position");
   auto ChDir = make_shared<gm2_TRegBarcode>("Dir","Direction determination");
   auto ChAbs = make_shared<gm2_TAbsBarcode>("Abs","Absolute position");
+  auto ChGalil = make_shared<gm2_TEncoder>("Galil","Galil Encoder Information");
   double Ch1,Ch2,Ch3,Ch4,Ch5,Ch6;
   double Tension1,Tension2,V1,V2,P1,P2,O1,O2;
   double Time;
   string Device;
-
-  vector<double> PosList1,PosList2;
-  vector<double> Velocity1,Velocity2;
 
   //Read from file
   string FileName = string{argv[1]}+".txt";
@@ -65,6 +64,7 @@ int main(int argc,char** argv)
     if (Device.compare("Galil")==0){
       iss>>Time>>Tension1>>Tension2>>P1>>P2>>V1>>V2>>O1>>O2;
       if (iGalil==0)Time0G=Time;
+      ChGalil->SetPoint(iGalil,Time-Time0G,P1,P2,V1,V2,Tension1,Tension2,O1,O2);
       iGalil++;
     }
     if (Device.compare("Barcode")==0){
@@ -84,10 +84,6 @@ int main(int argc,char** argv)
     ChAbs->SetPoint(i,P1,Ch2);
     ChDir->SetPoint(i,P1,Ch3);
     */
-    PosList1.push_back(P1);
-    PosList2.push_back(P2);
-    Velocity1.push_back(V1);
-    Velocity2.push_back(V2);
   }
   ChPos->SetThreshold(0.01);
   ChPos->FindExtrema();
@@ -106,8 +102,9 @@ int main(int argc,char** argv)
   ChDir->SetLogicLevelScale(0.4);
   ChAbs->SetLogicLevelScale(0.4);
 
-  auto NExtremaPos = ChPos->GetNExtrema();
+//  auto NExtremaPos = ChPos->GetNExtrema();
   auto PosExtremaList = ChPos->GetExtremaList();
+  /*
   auto gPosCorrelation = make_shared<TGraph>(NExtremaPos);
   for (int i=0;i<NExtremaPos;i++){
     gPosCorrelation->SetPoint(i,PosList1[PosExtremaList[i]],i*4.0);
@@ -115,13 +112,14 @@ int main(int argc,char** argv)
   }
   gPosCorrelation->SetName("PosCorrelation");
   gPosCorrelation->SetTitle("Position correlation to encoder");
+*/
 
-
-  auto gPosRaw = ChPos->GetRawGraph();
-  auto gPosLog = ChPos->GetLogicLevelGraph();
+  auto gPosRaw = ChPos->GetRawGraph(250);
+  auto gPosLog = ChPos->GetLogicLevelGraph(250);
   auto gPosAve = ChPos->GetAverageGraph();
   auto gPosCon = ChPos->GetContrastGraph();
-  auto gPosExt = ChPos->GetExtremaGraph("VsX");
+  auto gPosExt = ChPos->GetExtremaGraph("VsX",250);
+  auto gPosVel = ChPos->GetVelocityGraph();
   auto hPosHWidth = ChPos->GetLevelWidthHist("High");
   auto hPosLWidth = ChPos->GetLevelWidthHist("Low");
 
@@ -131,7 +129,7 @@ int main(int argc,char** argv)
   auto gDirCon = ChDir->GetContrastGraph();
   auto gDirExt = ChDir->GetExtremaGraph("VsX");
 
-  auto gAbsRaw = ChAbs->GetRawGraph();
+  auto gAbsRaw = ChAbs->GetRawGraph(250);
   auto gAbsExt = ChAbs->GetExtremaGraph("VsX");
   auto gAbsLog = ChAbs->GetLogicLevelGraph();
   auto gAbsWidth = ChAbs->GetAbsWidthGraph();
@@ -174,19 +172,15 @@ int main(int argc,char** argv)
   auto gDirInterval = ChDir->GetIntervalGraph();
   auto gAbsLevelWidth = ChAbs->GetLevelWidthGraph();
 
-  auto NPoints = Velocity1.size();
-  auto gVelocity1 = make_shared<TGraph>(NPoints);
-  auto gVelocity2 = make_shared<TGraph>(NPoints);
-  auto gPosition1 = make_shared<TGraph>(NPoints);
-  auto gPosition2 = make_shared<TGraph>(NPoints);
-  for (int j=0;j<NPoints;j++){
-//    gVelocity1->SetPoint(j,j,Velocity1[j]);
-//    gVelocity2->SetPoint(j,j,Velocity2[j]);
-    gVelocity1->SetPoint(j,j,Velocity1[j]);
-    gVelocity2->SetPoint(j,j,Velocity2[j]);
-    gPosition1->SetPoint(j,j,PosList1[j]);
-    gPosition2->SetPoint(j,j,PosList2[j]);
-  }
+//  auto NGalilPoints = ChGalil->GetNPoints();
+  auto gVelocity1 = ChGalil->GetVelocityGraph(1);
+  auto gVelocity2 = ChGalil->GetVelocityGraph(2);
+  auto gPosition1 = ChGalil->GetPositionGraph(1);
+  auto gPosition2 = ChGalil->GetPositionGraph(2);
+  auto gTension1= ChGalil->GetTensionGraph(1);
+  auto gTension2= ChGalil->GetTensionGraph(2);
+  auto gControl1= ChGalil->GetControlVoltageGraph(1);
+  auto gControl2= ChGalil->GetControlVoltageGraph(2);
   
   //Calculate position resolution
   auto NInterval = gPosInterval->GetN();
@@ -257,6 +251,7 @@ int main(int argc,char** argv)
   gPosAve->Write();
   gPosCon->Write();
   gPosExt->Write();
+  gPosVel->Write();
 
   gDirRaw->Write();
   gDirLog->Write();
@@ -275,11 +270,15 @@ int main(int argc,char** argv)
   gDirInterval->Write();
   gAbsLevelWidth->Write();
   gPosLevelWidth->Write();
-  gPosCorrelation->Write();
+//  gPosCorrelation->Write();
   gVelocity1->Write();
   gVelocity2->Write();
   gPosition1->Write();
   gPosition2->Write();
+  gTension1->Write();
+  gTension2->Write();
+  gControl1->Write();
+  gControl2->Write();
 
   hPosHWidth->Write();
   hPosLWidth->Write();

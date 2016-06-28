@@ -1,6 +1,6 @@
 /*
  * =====================================================================================
- *       Filename:  gm2_TBarcode.cxx
+ *       Filename:  gm2_TBarcode.h
  *
  *    Description:  Barcode classes for the GM2 experiment
  *
@@ -119,6 +119,7 @@ class gm2_TRegBarcode : public gm2_TBarcode
     vector<double> GetContrast() const{return fContrast;}
     shared_ptr<TGraph> GetAverageGraph() const;
     shared_ptr<TGraph> GetContrastGraph() const;
+    shared_ptr<TGraph> GetVelocityGraph()const;
     //method for determining the extrema
     int FindExtrema();
 };
