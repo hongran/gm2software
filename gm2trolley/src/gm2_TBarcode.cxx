@@ -620,12 +620,14 @@ int gm2_TAbsBarcode::ChopSegments(const gm2_TRegBarcode& RefReg)
       if (RefLevels[j].REdge<LeftBound){
 	j++;
 	continue;
-      }else{
+      }
+      else{
 	fAuxList[i].push_back(RefLevels[j]);
 	if (RefLevels[j].REdge<RightBound){
 	  j++;
 	  continue;
-	}else{
+	}
+	else{
 	  break;
 	}
       }
@@ -703,6 +705,10 @@ shared_ptr<TGraph> gm2_TAbsBarcode::GetAbsSegWidthGraph() const
 int gm2_TAbsBarcode::Decode()
 {
   //Not yet developed
+  for (int i=0; i<fSegmentList.size(); ++i){
+  	vector<int> AbsIndexList = fSegmentList[i].fLevelIndexList;
+  	fSegmentList.fRegLevelList;
+  }
   return 0;
 }
 
