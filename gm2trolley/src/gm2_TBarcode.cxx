@@ -295,6 +295,24 @@ shared_ptr<TGraph> gm2_TRegBarcode::GetContrastGraph() const
 }
 
 /**********************************************************************/
+shared_ptr<TGraph> gm2_TRegBarcode::GetVelocityGraph() const
+{
+  if (!ExtremaFound){
+    cout << "Extrema for Barcode "<<fName<<" are not constructed!"<<endl;
+    return nullptr;
+  }
+  auto graph_ptr = make_shared<TGraph>(fNExtrema-1);
+  for (int i=0;i<fNExtrema-1;i++){
+    double delta_T = fX[fExtremaList[i+1]]-fX[fExtremaList[i]];//ms
+    double delta_X = 2.0; //mm
+    graph_ptr->SetPoint(i,fX[fExtremaList[i]],delta_X/delta_T*10000.0); // mm/s
+  }
+  graph_ptr->SetName("g"+fName+"_Velocity");
+  graph_ptr->SetTitle(fTitle+"_Velocity");
+  return graph_ptr;
+}
+
+/**********************************************************************/
 int gm2_TRegBarcode::FindExtrema()
 {
   auto N = fX.size();
