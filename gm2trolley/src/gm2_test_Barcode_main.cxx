@@ -198,7 +198,8 @@ int main(int argc,char** argv)
   average2/=k;
   cout << "average interval = "<<average<<endl;
   cout << "RMS = "<<sqrt(average2-average*average)<<endl;
-
+  
+  ChAbs->Decode();
 
   TCanvas c1;
   gPosRaw->Draw("APL");

@@ -777,8 +777,10 @@ int gm2_TAbsBarcode::Decode()
   	}
   	DigitMap.erase(DigitMap.begin()); //Delete first element
   	DigitMap.pop_back();              //Delete last element
-  	  
+  	cout << "Digit Map Size: " << DigitMap.size() << "Reg Level List Size: " << RegLevelList.size() << endl;
+  	
   }
+  
   return 0;
 }
 

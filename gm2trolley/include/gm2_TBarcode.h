@@ -38,7 +38,7 @@ namespace gm2Barcode{
       int Code;			//Code represented by the binary number
       int NAbsLevel;		//Number of Abs levels
       int NRegLevel;		//Number of Reg levels
-      vector<int> fLevelIndexList;	//List of Abs logic level indeces
+      vector<int> fLevelIndexList;	//List of Abs logic level indicies
       vector<LogicLevel> fRegLevelList;	//List of Reg logic levels
   };
 }
