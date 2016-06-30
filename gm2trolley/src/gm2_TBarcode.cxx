@@ -679,6 +679,7 @@ int gm2_TAbsBarcode::ChopSegments(const gm2_TRegBarcode& RefReg)
 	i++;
       }
       fSegmentList.push_back(gm2Barcode::AbsBarcodeSegment{true,-1,static_cast<int>(TempAbsList.size()),static_cast<int>(TempRegList.size()),TempAbsList,TempRegList});
+      cout << "Temp Reg List Size: " << TempRegList.size() << endl;
     }
   }
 
@@ -724,6 +725,9 @@ int gm2_TAbsBarcode::Decode()
 {
   //Not yet developed
   for (int i=0; i<fNSegments; ++i){
+  	if(!fSegmentList[i].IsCodeRegion){
+  		continue;
+  	}
   	auto AbsIndexList = fSegmentList[i].fLevelIndexList;
   	auto RegLevelList = fSegmentList[i].fRegLevelList;
   	RegLevelList.erase(RegLevelList.begin()); //Remove first element
@@ -777,8 +781,57 @@ int gm2_TAbsBarcode::Decode()
   	}
   	DigitMap.erase(DigitMap.begin()); //Delete first element
   	DigitMap.pop_back();              //Delete last element
-  	cout << "Digit Map Size: " << DigitMap.size() << "Reg Level List Size: " << RegLevelList.size() << endl;
+  	int DigitMapSize = DigitMap.size();
+  	cout << "Digit Map Size: " << DigitMapSize << " Reg Level List Size: " << RegLevelList.size() << endl;
+/*  	vector<int> pos_vec;
+  	for(unsigned int m=0; m<DigitMap.size(); m++){
+  		cout << DigitMap[m] << " ";
+  		if(DigitMap[m] == 0){
+  			continue;
+  		}else if (DigitMap[m] == 1){
+  			pos_vec.push_back(m);
+  		}
+  	}*/
   	
+  	//Determine Direction
+  	int LDir = fDirectionList[fLogicLevels[fSegmentList[i].fLevelIndexList.front()].LEdge];
+  	int RDir = fDirectionList[fLogicLevels[fSegmentList[i].fLevelIndexList.back()].REdge];
+  	double TimeStamp = fX[fLogicLevels[fSegmentList[i].fLevelIndexList.front()].LEdge];
+  	cout <<"LeftDirection= "<<LDir<<endl;
+  	cout <<"RightDirection= "<<RDir<<endl;
+  	//Make complement, change direction if moving CW
+  	if (LDir!=RDir){
+  		continue;
+  	}else if(LDir==0 || RDir==0){
+  		continue;
+  	}else if(LDir==-1 && RDir==-1){
+  		for(int n=0; n<DigitMapSize/2; n++){
+  			int temp = DigitMap[n];
+  			DigitMap[n] = DigitMap[DigitMapSize-1-n];
+  			DigitMap[DigitMapSize-1-n] = temp;
+  		}
+  	}
+  	for(int n=0; n<DigitMapSize; n++){
+  		if(DigitMap[n] == 0){
+  			DigitMap[n] = 1;
+  		}else if(DigitMap[n] == 1){
+  			DigitMap[n] = 0;
+  		}else{
+  			cout <<"Error! Missing one or more interpretations of digits in Abs Barcode."<<endl;
+  			return -1;
+  		}
+  	}
+  	//Convert binary to digital
+  	if (DigitMapSize!=10){//In bad region, end region or something else
+  		continue;
+  	}
+  	int DecimalNumber = 0;
+  	for(int j=0; j<DigitMapSize; j++){
+  		cout <<DigitMap[j];
+  		DecimalNumber += DigitMap[j] << j;
+  	} 
+  	cout << "Decimal Number: " << DecimalNumber << endl;
+  	cout << "TimeStamp "<< TimeStamp << endl << endl;
   }
   
   return 0;
