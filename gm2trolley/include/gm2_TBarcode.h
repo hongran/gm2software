@@ -60,6 +60,7 @@ class gm2_TBarcode : public TNamed
     int fNExtrema;		//Number o extrema
     double fThreshold;		//Threshold
     double fLogicLevelScale;	//Value of logic-1 for plotting graph
+    double fTransitionThreshold;//Threshold for determining the transition between high and low level
     //Flags
     bool LogicLevelConverted;	//Whether logic levels are converted
     bool ExtremaFound;		//Whether Extrema are found
@@ -74,7 +75,8 @@ class gm2_TBarcode : public TNamed
     gm2_TBarcode(const TString& Name, const TString& Title, vector<double> fx, vector<double> fy);
     ~gm2_TBarcode();
     //Set Methods
-    void SetThreshold(double val){fThreshold = val;}
+    void SetThreshold(const double val){fThreshold = val;}
+    void SetTransitionThreshold(const double val);
     void SetPoint(const int i, const double x,const double y);
     void SetLogicLevelScale(const double Level){fLogicLevelScale = Level;}
     void SetDirection(const vector<int> ExternalDirectionList);

@@ -36,6 +36,7 @@ gm2_TBarcode::gm2_TBarcode(const TString& Name, const TString& Title) : TNamed(N
   fNLowLevels = 0;            //Number of low levels
   fNExtrema = 0;              //Number o extrema
   fThreshold = 0.5;           //Threshold
+  fTransitionThreshold = 0.355;//Transition threshold
   fLogicLevelScale = 1.0;     //By default, logic-1 is "1"
   //Flags
   LogicLevelConverted = false;   //Whether logic levels are converted
@@ -50,6 +51,7 @@ gm2_TBarcode::gm2_TBarcode(const TString& Name, const TString& Title , vector<do
   fNLowLevels = 0;            //Number of low levels
   fNExtrema = 0;              //Number o extrema
   fThreshold = 0.5;           //Threshold
+  fTransitionThreshold = 0.355;//Transition threshold
   //Initialize data array
   if (fX.size()!=fY.size()){
     cerr <<"Error in constructing TBarcode. Dimensions do not fit."<<endl;
@@ -83,6 +85,17 @@ void gm2_TBarcode::SetPoint(const int i, const double x,const double y)
 }
 
 /**********************************************************************/
+void gm2_TBarcode::SetTransitionThreshold(const double val)
+{
+  if (val>0.0 && val<1.0){
+    fTransitionThreshold = val;
+  }else{
+    cout <<"Warning! TransitionThreshold should be in region (0,1). Set back to default 0.355.";
+    fTransitionThreshold = 0.355;
+  }
+}
+
+/**********************************************************************/
 void gm2_TBarcode::SetDirection(const vector<int> ExternalDirectionList)
 {
   fDirectionList = ExternalDirectionList;
@@ -99,7 +112,7 @@ int gm2_TBarcode::FindHalfRise(int low, int high)
   double Difference = fY[high]-fY[low];
   int i=low;
   for (i=low;i<=high;i++){
-    if (fY[i]-fY[low]>Difference/2.0)break;
+    if (fY[i]-fY[low]>Difference*fTransitionThreshold)break;
   }
   return i;
 }
@@ -110,7 +123,7 @@ int gm2_TBarcode::FindHalfFall(int high, int low)
   double Difference = fY[high]-fY[low];
   int i=high;
   for (i=high;i<=low;i++){
-    if (fY[i]-fY[low]<Difference/2.0)break;
+    if (fY[i]-fY[low]<Difference*fTransitionThreshold)break;
   }
   return i;
 }
@@ -644,6 +657,9 @@ int gm2_TAbsBarcode::ChopSegments(const gm2_TRegBarcode& RefReg)
 	if (RefLevels[j].REdge<RightBound){
 	  j++;
 	  continue;
+	}else if (RefLevels[j].REdge==RightBound){
+	  if (j+1<NRefLevels)fAuxList[i].push_back(RefLevels[j+1]);
+	  break;
 	}
 	else{
 	  break;
@@ -673,13 +689,17 @@ int gm2_TAbsBarcode::ChopSegments(const gm2_TRegBarcode& RefReg)
 	    if ((TempRegList.back().LEdge==fAuxList[i][j].LEdge) && (TempRegList.back().REdge==fAuxList[i][j].REdge)){
 	      continue;
 	    }
+	    //Also need to check second-last, may overlap in those cases where edges are overlaping
+	    if ((TempRegList[TempRegList.size()-2].LEdge==fAuxList[i][j].LEdge) && (TempRegList[TempRegList.size()-2].REdge==fAuxList[i][j].REdge)){
+	      continue;
+	    }
 	  }
 	  TempRegList.push_back(fAuxList[i][j]);
 	}
 	i++;
       }
       fSegmentList.push_back(gm2Barcode::AbsBarcodeSegment{true,-1,static_cast<int>(TempAbsList.size()),static_cast<int>(TempRegList.size()),TempAbsList,TempRegList});
-      cout << "Temp Reg List Size: " << TempRegList.size() << endl;
+//      cout << "Temp Reg List Size: " << TempRegList.size() << endl;
     }
   }
 
@@ -725,115 +745,130 @@ int gm2_TAbsBarcode::Decode()
 {
   //Not yet developed
   for (int i=0; i<fNSegments; ++i){
-  	if(!fSegmentList[i].IsCodeRegion){
-  		continue;
-  	}
-  	auto AbsIndexList = fSegmentList[i].fLevelIndexList;
-  	auto RegLevelList = fSegmentList[i].fRegLevelList;
-  	RegLevelList.erase(RegLevelList.begin()); //Remove first element
-  	RegLevelList.pop_back();                  //Remove last element
-  	vector<int> DigitMap(RegLevelList.size(),-1); //Temporarily save the digits from the absolute barcode
-  	
-  	for (int j=0; j<RegLevelList.size(); ++j){
-  		auto RegLevelUnit = RegLevelList[j];
-  		for (int k=0; k<AbsIndexList.size(); ++k){
-  			auto AbsLevelIndex = AbsIndexList[k];
-  			auto AbsLevelUnit = fLogicLevels[AbsLevelIndex];
-  			
-  			if (RegLevelUnit.REdge <= AbsLevelUnit.LEdge){
-  				continue;
-  			}else if(AbsLevelUnit.REdge <= RegLevelUnit.LEdge){
-  				continue;
-  			}else if(RegLevelUnit.LEdge <= AbsLevelUnit.LEdge && AbsLevelUnit.REdge <= RegLevelUnit.REdge){
-  				DigitMap[j] = AbsLevelUnit.Level;
-  				break;
-  			}else if(RegLevelUnit.LEdge >= AbsLevelUnit.LEdge && AbsLevelUnit.REdge >= RegLevelUnit.REdge){
-  				DigitMap[j] = AbsLevelUnit.Level;
-  				break;
-  			}else if(RegLevelUnit.LEdge < AbsLevelUnit.LEdge && RegLevelUnit.REdge > AbsLevelUnit.LEdge && RegLevelUnit.REdge < AbsLevelUnit.REdge){
-  				double OverlapRatio = (fX[RegLevelUnit.REdge]-fX[AbsLevelUnit.LEdge])/(fX[RegLevelUnit.REdge]-fX[RegLevelUnit.LEdge]);
-  				if (OverlapRatio < 0.5){
-  					continue;
-  				}
-  				if (OverlapRatio >= 0.5){
-  					DigitMap[j] = AbsLevelUnit.Level;
-  					break;
-  				}
-  			}else if(RegLevelUnit.LEdge > AbsLevelUnit.LEdge && RegLevelUnit.LEdge < AbsLevelUnit.REdge && RegLevelUnit.REdge > AbsLevelUnit.REdge){
-  			  	double OverlapRatio = (fX[AbsLevelUnit.REdge]-fX[RegLevelUnit.LEdge])/(fX[RegLevelUnit.REdge]-fX[RegLevelUnit.LEdge]);
-  				if (OverlapRatio < 0.5){
-  					continue;
-  				}
-  				if (OverlapRatio >= 0.5){
-  					DigitMap[j] = AbsLevelUnit.Level;
-  					break;
-  				}
-  			}else{
-  				cout << "Error! in Decode Function an exception case occured." << endl;
-  				cout << "Regular Left: " << fX[RegLevelUnit.LEdge] << endl;
-  				cout << "Regular Right: " << fX[RegLevelUnit.REdge] << endl;
-  				cout << "Absolute Left: " << fX[AbsLevelUnit.LEdge] << endl;
-  				cout << "Absolute Right: " << fX[AbsLevelUnit.REdge] << endl;
-  				return -1;
-  			}
-  			
-  		}
-  	}
-  	DigitMap.erase(DigitMap.begin()); //Delete first element
-  	DigitMap.pop_back();              //Delete last element
-  	int DigitMapSize = DigitMap.size();
-  	cout << "Digit Map Size: " << DigitMapSize << " Reg Level List Size: " << RegLevelList.size() << endl;
-/*  	vector<int> pos_vec;
-  	for(unsigned int m=0; m<DigitMap.size(); m++){
-  		cout << DigitMap[m] << " ";
-  		if(DigitMap[m] == 0){
-  			continue;
-  		}else if (DigitMap[m] == 1){
-  			pos_vec.push_back(m);
-  		}
-  	}*/
-  	
-  	//Determine Direction
-  	int LDir = fDirectionList[fLogicLevels[fSegmentList[i].fLevelIndexList.front()].LEdge];
-  	int RDir = fDirectionList[fLogicLevels[fSegmentList[i].fLevelIndexList.back()].REdge];
-  	double TimeStamp = fX[fLogicLevels[fSegmentList[i].fLevelIndexList.front()].LEdge];
-  	cout <<"LeftDirection= "<<LDir<<endl;
-  	cout <<"RightDirection= "<<RDir<<endl;
-  	//Make complement, change direction if moving CW
-  	if (LDir!=RDir){
-  		continue;
-  	}else if(LDir==0 || RDir==0){
-  		continue;
-  	}else if(LDir==-1 && RDir==-1){
-  		for(int n=0; n<DigitMapSize/2; n++){
-  			int temp = DigitMap[n];
-  			DigitMap[n] = DigitMap[DigitMapSize-1-n];
-  			DigitMap[DigitMapSize-1-n] = temp;
-  		}
-  	}
-  	for(int n=0; n<DigitMapSize; n++){
-  		if(DigitMap[n] == 0){
-  			DigitMap[n] = 1;
-  		}else if(DigitMap[n] == 1){
-  			DigitMap[n] = 0;
-  		}else{
-  			cout <<"Error! Missing one or more interpretations of digits in Abs Barcode."<<endl;
-  			return -1;
-  		}
-  	}
-  	//Convert binary to digital
-  	if (DigitMapSize!=10){//In bad region, end region or something else
-  		continue;
-  	}
-  	int DecimalNumber = 0;
-  	for(int j=0; j<DigitMapSize; j++){
-  		cout <<DigitMap[j];
-  		DecimalNumber += DigitMap[j] << j;
-  	} 
-  	cout << "Decimal Number: " << DecimalNumber << endl;
-  	cout << "TimeStamp "<< TimeStamp << endl << endl;
+    if(!fSegmentList[i].IsCodeRegion){
+      continue;
+    }
+    //Determine Direction
+    int LDir = fDirectionList[fLogicLevels[fSegmentList[i].fLevelIndexList.front()].LEdge];
+    int RDir = fDirectionList[fLogicLevels[fSegmentList[i].fLevelIndexList.back()].REdge];
+    double TimeStamp = fX[fLogicLevels[fSegmentList[i].fLevelIndexList.front()].LEdge];
+    if (LDir!=RDir){
+      continue;
+    }else if(LDir==0 || RDir==0){
+      continue;
+    }
+    auto AbsIndexList = fSegmentList[i].fLevelIndexList;
+    auto RegLevelList = fSegmentList[i].fRegLevelList;
+    if (RegLevelList.size()==14){
+      RegLevelList.erase(RegLevelList.begin()); //Remove first element
+      RegLevelList.pop_back();                  //Remove last element
+    }else if (RegLevelList.size()<14){
+      if(LDir==1 && RDir==1){
+	if (RegLevelList.front().Level==0)RegLevelList.erase(RegLevelList.begin());
+	if (RegLevelList.back().Level==1)RegLevelList.pop_back();
+      }else if(LDir==-1 && RDir==-1){
+	if (RegLevelList.front().Level==1)RegLevelList.erase(RegLevelList.begin());
+	if (RegLevelList.back().Level==0)RegLevelList.pop_back();
+      }
+    }else{
+      continue;//In bad region, end region or something else
+//      cout <<"Error. Coded region is too long. Length = "<<RegLevelList.size()<<endl;
+//      return -1;
+    }
+    vector<int> DigitMap(RegLevelList.size(),-1); //Temporarily save the digits from the absolute barcode
+
+    for (int j=0; j<RegLevelList.size(); ++j){
+      auto RegLevelUnit = RegLevelList[j];
+      for (int k=0; k<AbsIndexList.size(); ++k){
+	auto AbsLevelIndex = AbsIndexList[k];
+	auto AbsLevelUnit = fLogicLevels[AbsLevelIndex];
+
+	if (RegLevelUnit.REdge <= AbsLevelUnit.LEdge){
+	  continue;
+	}else if(AbsLevelUnit.REdge <= RegLevelUnit.LEdge){
+	  continue;
+	}else if(RegLevelUnit.LEdge <= AbsLevelUnit.LEdge && AbsLevelUnit.REdge <= RegLevelUnit.REdge){
+	  DigitMap[j] = AbsLevelUnit.Level;
+	  break;
+	}else if(RegLevelUnit.LEdge >= AbsLevelUnit.LEdge && AbsLevelUnit.REdge >= RegLevelUnit.REdge){
+	  DigitMap[j] = AbsLevelUnit.Level;
+	  break;
+	}else if(RegLevelUnit.LEdge < AbsLevelUnit.LEdge && RegLevelUnit.REdge > AbsLevelUnit.LEdge && RegLevelUnit.REdge < AbsLevelUnit.REdge){
+	  double OverlapRatio = (fX[RegLevelUnit.REdge]-fX[AbsLevelUnit.LEdge])/(fX[RegLevelUnit.REdge]-fX[RegLevelUnit.LEdge]);
+	  if (OverlapRatio < 0.5){
+	    continue;
+	  }
+	  if (OverlapRatio >= 0.5){
+	    DigitMap[j] = AbsLevelUnit.Level;
+	    break;
+	  }
+	}else if(RegLevelUnit.LEdge > AbsLevelUnit.LEdge && RegLevelUnit.LEdge < AbsLevelUnit.REdge && RegLevelUnit.REdge > AbsLevelUnit.REdge){
+	  double OverlapRatio = (fX[AbsLevelUnit.REdge]-fX[RegLevelUnit.LEdge])/(fX[RegLevelUnit.REdge]-fX[RegLevelUnit.LEdge]);
+	  if (OverlapRatio < 0.5){
+	    continue;
+	  }
+	  if (OverlapRatio >= 0.5){
+	    DigitMap[j] = AbsLevelUnit.Level;
+	    break;
+	  }
+	}else{
+	  cout << "Error! in Decode Function an exception case occured." << endl;
+	  cout << "Regular Left: " << fX[RegLevelUnit.LEdge] << endl;
+	  cout << "Regular Right: " << fX[RegLevelUnit.REdge] << endl;
+	  cout << "Absolute Left: " << fX[AbsLevelUnit.LEdge] << endl;
+	  cout << "Absolute Right: " << fX[AbsLevelUnit.REdge] << endl;
+	  return -1;
+	}
+
+      }
+    }
+    DigitMap.erase(DigitMap.begin()); //Delete first element
+    DigitMap.pop_back();              //Delete last element
+    int DigitMapSize = DigitMap.size();
+//    cout << "Digit Map Size: " << DigitMapSize << " Reg Level List Size: " << RegLevelList.size() << endl;
+    /*  	vector<int> pos_vec;
+		for(unsigned int m=0; m<DigitMap.size(); m++){
+		cout << DigitMap[m] << " ";
+		if(DigitMap[m] == 0){
+		continue;
+		}else if (DigitMap[m] == 1){
+		pos_vec.push_back(m);
+		}
+		}*/
+
+    //Make complement, change direction if moving CW
+    if(LDir==-1 && RDir==-1){
+      for(int n=0; n<DigitMapSize/2; n++){
+	int temp = DigitMap[n];
+	DigitMap[n] = DigitMap[DigitMapSize-1-n];
+	DigitMap[DigitMapSize-1-n] = temp;
+      }
+    }
+    for(int n=0; n<DigitMapSize; n++){
+      if(DigitMap[n] == 0){
+	DigitMap[n] = 1;
+      }else if(DigitMap[n] == 1){
+	DigitMap[n] = 0;
+      }else{
+	cout <<"Error! Missing one or more interpretations of digits in Abs Barcode."<<endl;
+	return -1;
+      }
+    }
+    //Convert binary to digital
+    if (DigitMapSize!=10){//In bad region, end region or something else
+      continue;
+    }
+    int DecimalNumber = 0;
+    cout << "TimeStamp "<< TimeStamp<< " ";
+    cout <<"Binary code: ";
+    for(int j=0; j<DigitMapSize; j++){
+      cout <<DigitMap[j];
+      DecimalNumber += DigitMap[j] << j;
+    } 
+    cout <<" ; ";
+    cout << "Decimal Number: " << DecimalNumber<< endl;;
   }
-  
+
   return 0;
 }
 

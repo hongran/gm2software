@@ -114,11 +114,11 @@ int main(int argc,char** argv)
   gPosCorrelation->SetTitle("Position correlation to encoder");
 */
 
-  auto gPosRaw = ChPos->GetRawGraph(250);
-  auto gPosLog = ChPos->GetLogicLevelGraph(250);
+  auto gPosRaw = ChPos->GetRawGraph();
+  auto gPosLog = ChPos->GetLogicLevelGraph();
   auto gPosAve = ChPos->GetAverageGraph();
   auto gPosCon = ChPos->GetContrastGraph();
-  auto gPosExt = ChPos->GetExtremaGraph("VsX",250);
+  auto gPosExt = ChPos->GetExtremaGraph("VsX");
   auto gPosVel = ChPos->GetVelocityGraph();
   auto hPosHWidth = ChPos->GetLevelWidthHist("High");
   auto hPosLWidth = ChPos->GetLevelWidthHist("Low");
@@ -129,7 +129,7 @@ int main(int argc,char** argv)
   auto gDirCon = ChDir->GetContrastGraph();
   auto gDirExt = ChDir->GetExtremaGraph("VsX");
 
-  auto gAbsRaw = ChAbs->GetRawGraph(250);
+  auto gAbsRaw = ChAbs->GetRawGraph();
   auto gAbsExt = ChAbs->GetExtremaGraph("VsX");
   auto gAbsLog = ChAbs->GetLogicLevelGraph();
   auto gAbsWidth = ChAbs->GetAbsWidthGraph();
