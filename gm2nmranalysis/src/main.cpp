@@ -10,7 +10,7 @@ int main(){
 
   TrolleyAnalysisManager *manager = new TrolleyAnalysisManager;
 
-  manager->GetPulse()->SetClockFrequencyInMHz(61.7);
+  manager->GetPulse()->SetClockFrequencyInMHz(61.683);
   manager->SetInputFile(string{"data/data-nmr-Run1.dat"});
 
   int i = 0;
