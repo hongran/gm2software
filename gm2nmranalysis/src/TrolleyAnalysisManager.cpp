@@ -28,7 +28,7 @@ void TrolleyAnalysisManager::SetInputFile(string input){
 
 
 int TrolleyAnalysisManager::ReadNextPulse(){
-  Packet_Header header;
+  Trolley_Header header;
   unsigned short Nsamples = 0;
   short sample;
   int j = 0;
@@ -59,6 +59,7 @@ int TrolleyAnalysisManager::ReadNextPulse(){
 	 header.fixed_value4 == 0xAAAA){
 	
 	// We have found a header, so we can decode the data
+	nmrPulse->SetHeader(header);
 	Nsamples = header.nmr_samples;
 	if(Nsamples == 0) return -3;
 	
