@@ -8,9 +8,9 @@ EXE_DIR = ./bin
 ROOT_FLAGS = `root-config --cflags`
 ROOT_LIBS = `root-config --libs`
 
-BARCODE_DEPS = $(INC_DIR)/gm2_TBarcode.h
+BARCODE_DEPS = $(INC_DIR)/gm2_TBarcode.h $(INC_DIR)/gm2_TEncoder.h
 
-_BARCODE_OBJ = gm2_TBarcode.o gm2_test_Barcode_main.o
+_BARCODE_OBJ = gm2_TBarcode.o gm2_TEncoder.o gm2_test_Barcode_main.o
 BARCODE_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(_BARCODE_OBJ))
 
 _EXE = gm2_test_Barcode
