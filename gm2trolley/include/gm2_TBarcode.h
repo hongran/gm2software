@@ -124,6 +124,7 @@ class gm2_TRegBarcode : public gm2_TBarcode
     shared_ptr<TGraph> GetVelocityGraph()const;
     //method for determining the extrema
     int FindExtrema();
+    shared_ptr<TGraph> Smooth();
 };
 
 class gm2_TAbsBarcode : public gm2_TBarcode
