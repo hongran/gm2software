@@ -75,11 +75,14 @@ void gm2_TBarcode::SetPoint(const int i, const double x,const double y)
   if (i<fX.size() && i<fY.size()){
     fX[i] = x;
     fY[i] = y;
+    fAbnormal[i] = gm2Barcode::None;
   }else{
     fX.resize(i+1,-1.0);
     fY.resize(i+1,-1.0);
+    fAbnormal.resize(i+1,gm2Barcode::None);
     fX[i] = x;
     fY[i] = y;
+    fAbnormal[i] = gm2Barcode::None;
     fNPoints = i+1;
   }
 }
@@ -96,12 +99,12 @@ void gm2_TBarcode::SetTransitionThreshold(const double val)
 }
 
 /**********************************************************************/
-void gm2_TBarcode::SetDirection(const vector<int> ExternalDirectionList)
+void gm2_TBarcode::SetDirection(const vector<int> ExternalDirection)
 {
-  fDirectionList = ExternalDirectionList;
-  if (ExternalDirectionList.size()!=fNPoints){
+  fDirection = ExternalDirection;
+  if (ExternalDirection.size()!=fNPoints){
     cout << "Warning! Direction list has a different size. Auto resized to fNpoints."<<endl;
-    fDirectionList.resize(fNPoints,0);
+    fDirection.resize(fNPoints,0);
   }
   DirectionSet = true;
 }
@@ -190,7 +193,7 @@ shared_ptr<TGraph> gm2_TBarcode::GetDirectionGraph(double shift) const
   }
   auto graph_ptr = make_shared<TGraph>(fNPoints);
   for (int i=0;i<fNPoints;i++){
-    graph_ptr->SetPoint(i,fX[i]+shift,fDirectionList[i]);
+    graph_ptr->SetPoint(i,fX[i]+shift,fDirection[i]);
   }
 
   graph_ptr->SetName("g"+fName+"_Direction");
@@ -674,7 +677,7 @@ int gm2_TAbsBarcode::ChopSegments(const gm2_TRegBarcode& RefReg)
   while (i<fNExtrema){
     int NLevelsRef = fAuxList[i].size();
     if (NLevelsRef>=16 && NLevelsRef<=20){
-      fSegmentList.push_back(gm2Barcode::AbsBarcodeSegment{false,-1,1,NLevelsRef,vector<int>{i},fAuxList[i]});
+      fSegmentList.push_back(gm2Barcode::AbsBarcodeSegment{0,-1,1,NLevelsRef,vector<int>{i},fAuxList[i]});
       i++;
       continue;
     }else{
@@ -698,12 +701,22 @@ int gm2_TAbsBarcode::ChopSegments(const gm2_TRegBarcode& RefReg)
 	}
 	i++;
       }
-      fSegmentList.push_back(gm2Barcode::AbsBarcodeSegment{true,-1,static_cast<int>(TempAbsList.size()),static_cast<int>(TempRegList.size()),TempAbsList,TempRegList});
+      fSegmentList.push_back(gm2Barcode::AbsBarcodeSegment{1,-1,static_cast<int>(TempAbsList.size()),static_cast<int>(TempRegList.size()),TempAbsList,TempRegList}); //For the moment, lable all non-trivial region coded, later the list will be scanned again to rule out abnormals
 //      cout << "Temp Reg List Size: " << TempRegList.size() << endl;
     }
   }
 
   fNSegments = fSegmentList.size();
+  //Scan SegmentList, mark all too long or too short regions abnormal
+  for (int i=0; i<fNSegments; i++){
+    if(fSegmentList[i].RegionType==0){
+      continue;
+    }
+    auto RegLevelList = fSegmentList[i].fRegLevelList;
+    if (RegLevelList.size()>14 || RegLevelList.size()<13){
+      fSegmentList[i].RegionType=-1;
+    }
+  }
   fSegmented=true;
   return 0;
 }
@@ -743,14 +756,17 @@ shared_ptr<TGraph> gm2_TAbsBarcode::GetAbsSegWidthGraph() const
 /**********************************************************************/
 int gm2_TAbsBarcode::Decode()
 {
-  //Not yet developed
+  if (!fSegmented){
+    cout << "Abs Barcode "<<fName<<" is not segmented! Decode needs segmentation."<<endl;
+    return -1;
+  }
   for (int i=0; i<fNSegments; ++i){
-    if(!fSegmentList[i].IsCodeRegion){
+    if(fSegmentList[i].RegionType!=1){
       continue;
     }
     //Determine Direction
-    int LDir = fDirectionList[fLogicLevels[fSegmentList[i].fLevelIndexList.front()].LEdge];
-    int RDir = fDirectionList[fLogicLevels[fSegmentList[i].fLevelIndexList.back()].REdge];
+    int LDir = fDirection[fLogicLevels[fSegmentList[i].fLevelIndexList.front()].LEdge];
+    int RDir = fDirection[fLogicLevels[fSegmentList[i].fLevelIndexList.back()].REdge];
     double TimeStamp = fX[fLogicLevels[fSegmentList[i].fLevelIndexList.front()].LEdge];
     if (LDir!=RDir){
       continue;
@@ -762,7 +778,7 @@ int gm2_TAbsBarcode::Decode()
     if (RegLevelList.size()==14){
       RegLevelList.erase(RegLevelList.begin()); //Remove first element
       RegLevelList.pop_back();                  //Remove last element
-    }else if (RegLevelList.size()<14){
+    }else if (RegLevelList.size()==13){
       if(LDir==1 && RDir==1){
 	if (RegLevelList.front().Level==0)RegLevelList.erase(RegLevelList.begin());
 	if (RegLevelList.back().Level==1)RegLevelList.pop_back();
@@ -771,8 +787,8 @@ int gm2_TAbsBarcode::Decode()
 	if (RegLevelList.back().Level==0)RegLevelList.pop_back();
       }
     }else{
+      cout <<"Error. Code region length is not normal. Length = "<<RegLevelList.size()<<endl;
       continue;//In bad region, end region or something else
-//      cout <<"Error. Coded region is too long. Length = "<<RegLevelList.size()<<endl;
 //      return -1;
     }
     vector<int> DigitMap(RegLevelList.size(),-1); //Temporarily save the digits from the absolute barcode

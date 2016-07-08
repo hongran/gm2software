@@ -34,12 +34,19 @@ namespace gm2Barcode{
   };
   class AbsBarcodeSegment{
     public:
-      bool IsCodeRegion;	//Code region or non-code region
+      int RegionType;		//Code region (1) or non-code region(0) or abnormal region(-1)
       int Code;			//Code represented by the binary number
       int NAbsLevel;		//Number of Abs levels
       int NRegLevel;		//Number of Reg levels
       vector<int> fLevelIndexList;	//List of Abs logic level indicies
       vector<LogicLevel> fRegLevelList;	//List of Reg logic levels
+  };
+  enum AbnormalStatus{
+    None,
+    ZeroVelocity,
+    StartRegion,
+    EndRegion,
+    ChamberJunction
   };
 }
 
@@ -49,8 +56,9 @@ class gm2_TBarcode : public TNamed
   protected:
     vector<double> fX;	//time stamp
     vector<double> fY;  //barcode readout value
+    vector<int> fDirection;	//Direction indicators;
+    vector<gm2Barcode::AbnormalStatus> fAbnormal;
     vector<gm2Barcode::LogicLevel> fLogicLevels;	//logic levels converted from the analog signal
-    vector<int> fDirectionList;	//Direction indicators;
     vector<int> fMaxList;	//List of maximum time stamps
     vector<int> fMinList;	//List of minimum time stamps
     vector<int> fExtremaList;	//List of extremum time stamps
@@ -79,7 +87,7 @@ class gm2_TBarcode : public TNamed
     void SetTransitionThreshold(const double val);
     void SetPoint(const int i, const double x,const double y);
     void SetLogicLevelScale(const double Level){fLogicLevelScale = Level;}
-    void SetDirection(const vector<int> ExternalDirectionList);
+    void SetDirection(const vector<int> ExternalDirection);
     //Get Methods
     bool IfLogicLevelConverted() const{return LogicLevelConverted;}
     bool IfExtremaFound() const{return ExtremaFound;}
