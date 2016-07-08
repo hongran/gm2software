@@ -525,7 +525,7 @@ shared_ptr<TGraph> gm2_TRegBarcode::Smooth(){
 	
 	for (Int_t k = 0; k<fNPoints; ++k){
 	
-		if(k>=fNPoints-4){
+		if(k>=fNPoints-4){ //Handle the last 5 points
 			Smooth_graph->SetPoint(k,fX[k],fY[k-1]);
 			continue;
 		}
