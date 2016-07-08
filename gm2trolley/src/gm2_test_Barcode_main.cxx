@@ -90,7 +90,7 @@ int main(int argc,char** argv)
   ChPos->ConvertToLogic();
   ChDir->SetThreshold(0.01);
   ChDir->ConvertToLogic();
-  ChAbs->SetThreshold(0.06);
+  ChAbs->SetThreshold(0.05);
   ChAbs->FindExtrema();
   ChAbs->ConvertToLogic();
   ChAbs->ChopSegments(*ChPos);
@@ -137,7 +137,7 @@ int main(int argc,char** argv)
   auto gAbsSegWidth = ChAbs->GetAbsSegWidthGraph();
 
   //Determine direction
-  auto PosLevelList = ChPos->GetLogicLevels();
+/*  auto PosLevelList = ChPos->GetLogicLevels();
   auto DirLevelList = ChDir->GetLogicLevels();
   auto NLevels = PosLevelList.size();
   auto NLevelsDir = DirLevelList.size();
@@ -161,6 +161,26 @@ int main(int argc,char** argv)
     for (int j=PosLevelList[i].LEdge;j<=PosLevelList[i].REdge;j++){
       DirectionList[j]=AuxDirectionList[i];
     }
+  }
+  */
+  //Determine direction using Galil
+  double VThreshold = 5.0;
+  auto GalilTimeLine = ChGalil->GetTimeLine();
+  auto GalilVelocity = ChGalil->GetVelocity(1);
+  auto BarcodeTimeLine = ChPos->GetX();
+  auto NVPoints = GalilVelocity.size();
+  auto NPosPoints = ChPos->GetNPoints();
+  vector<int> DirectionList(NPosPoints,0);
+  int j=0;
+  for (int i=0;i<NVPoints;i++){
+    double end = GalilTimeLine[i];
+    while (BarcodeTimeLine[j]<end){
+      if (GalilVelocity[i]>VThreshold) DirectionList[j]=1;
+      else if (GalilVelocity[i]<-VThreshold) DirectionList[j]=-1;
+      else DirectionList[j]=0;
+      j++;
+    }
+    if (j==NPosPoints) break;
   }
   ChPos->SetDirection(DirectionList);
   ChAbs->SetDirection(DirectionList);
