@@ -9,7 +9,7 @@
  *        Version:  1.0
  *        Created:  06/23/2016
  *       Revision:  none
- *       Compiler:  gcc
+ *       Compiler:  g++
  *
  *         Author:  Peter Winter
  *   Organization:  ANL
@@ -36,14 +36,18 @@ class TTrolleyNMRPulse : public TNMRPulse {
   // Set methods
   void SetClockFrequency(float f);  // Set the trolley RF clock frequency in Hz
   void SetClockFrequencyInMHz(float f);  // Set the trolley RF clock frequency providing MHz
+  void SetHeader(Trolley_Header &h){ header = h; };  // Set the current trolley header
 
   // Get methods
   float GetClockFrequency() const { return ClockFrequency; };  // Get the trolley RF clock frequency in Hz
   float GetDigitizerClockFrequency() const { return DigitizerFrequency; };  // Get the trolley digitizer frequency in Hz
+  Trolley_Header GetHeader() const { return header; };  // Get the current package header
 
  private:
   float ClockFrequency;   // RF clock frequency
   float DigitizerFrequency;   // Digitizer frequency derived from clock frequency
+
+  Trolley_Header header;
 
   // Private methods
   void Initialize();

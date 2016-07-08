@@ -5,12 +5,12 @@
  * =====================================================================================
  *       Filename:  AnalysisManager.h
  *
- *    Description:  AbstractAnalysis manager template class for analyzing NMR pulses
+ *    Description:  Abstract analysis manager template class for analyzing NMR pulses
  *
  *        Version:  1.0
  *        Created:  06/24/2016
  *       Revision:  none
- *       Compiler:  gcc
+ *       Compiler:  g++
  *
  *         Author:  Peter Winter
  *   Organization:  ANL
@@ -21,10 +21,8 @@
 
 using namespace std;
 
-template <class Pulse> class AnalysisManager {
+template <class Pulse, class AnalysisAlgorithm> class AnalysisManager {
  public:
-  virtual void Initialize() = 0;
-
   // Set methods
   virtual void SetPulse(shared_ptr<Pulse> p) = 0;
   virtual void SetVerbosityLevel(int verbose) = 0;
@@ -36,7 +34,11 @@ template <class Pulse> class AnalysisManager {
  protected:
   shared_ptr<Pulse> nmrPulse;
 
+  AnalysisAlgorithm algorithm;
+
   int verbosityLevel;
+
+  virtual void Initialize() = 0;
 };
 
 #endif 

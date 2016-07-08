@@ -520,7 +520,26 @@ int gm2_TBarcode::ConvertToLogic()
 
   return 0;
 }
-
+/*********************************************************************/
+shared_ptr<TGraph> gm2_TRegBarcode::Smooth(){
+	Double_t tot = 0;  //Used to sum y values that will be averaged
+	
+	auto Smooth_graph = make_shared<TGraph>(fNPoints);
+	
+	for (Int_t k = 0; k<fNPoints; ++k){
+	
+		if(k>=fNPoints-4){
+			Smooth_graph->SetPoint(k,fX[k],fY[k-1]);
+			continue;
+		}
+		tot = tot + (fY[k] + fY[k+1] + fY[k+2] + fY[k+3] + fY[k+4])/5.;
+		Smooth_graph->SetPoint(k,fX[k],tot);
+		tot = 0;
+		
+	}	
+  
+  return Smooth_graph;
+}
 /**********************************************************************/
 //Derived class TAbsBarcode
 /**********************************************************************/
@@ -542,11 +561,6 @@ gm2_TAbsBarcode::~gm2_TAbsBarcode()
 {}
 
 /**********************************************************************/
-/*int gm2_TAbsBarcode::FindExtrema()
-{
-  //Not yet developed
-  return 0;
-}*/
 int gm2_TAbsBarcode::FindExtrema()
 {
   auto N = fX.size();
