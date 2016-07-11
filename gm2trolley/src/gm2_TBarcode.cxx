@@ -559,27 +559,34 @@ int gm2_TBarcode::ConvertToLogic()
 /*********************************************************************/
 void gm2_TBarcode::Smooth(int PointsAveraged){
 	Double_t tot = 0;  //Used to sum y values that will be averaged
-	
-	TGraph *Smooth_graph = new TGraph();
+	vector<double> temp_vec;
+	Double_t average = 0;
 	
 	for (Int_t k = 0; k<fNPoints; ++k){
 	
-		if(k>=fNPoints-(PointsAveraged-1)){ //Handle the last points
-			Smooth_graph->SetPoint(k,fX[k],fY[k-1]);
+		if(k<PointsAveraged/2){ //Handle the first points
+		    temp_vec.push_back(fY[k]);
 			continue;
 		}
-		for(int i=0; i<PointsAveraged; i++){
-			tot += fY[k+i];
+	
+		if(k>=fNPoints-(PointsAveraged/2)){ //Handle the last points
+			temp_vec.push_back(fY[k]);
+			continue;
 		}
-		tot = tot/PointsAveraged;
-		Smooth_graph->SetPoint(k,fX[k],tot);
+		
+		for(int i=(k-PointsAveraged/2); i<=(k+PointsAveraged/2); i++){
+			tot += fY[i];
+		}
+		average = tot/PointsAveraged;
+		temp_vec.push_back(average);
+
 		tot = 0;	
 	}	
-	Double_t *YSmooth = Smooth_graph->GetY();
 	
 	for(int j=0; j<fNPoints; ++j){
-		fY[j] = YSmooth[j];
+		fY[j] = temp_vec[j];
 	}
+	temp_vec.clear();
 }
 /**********************************************************************/
 //Derived class TAbsBarcode
