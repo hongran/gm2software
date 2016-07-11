@@ -85,11 +85,14 @@ int main(int argc,char** argv)
     ChDir->SetPoint(i,P1,Ch3);
     */
   }
+  ChPos->Smooth();
   ChPos->SetThreshold(0.01);
   ChPos->FindExtrema();
+  ChPos->FindBigGaps();
   ChPos->ConvertToLogic();
   ChDir->SetThreshold(0.01);
   ChDir->ConvertToLogic();
+  ChAbs->Smooth();
   ChAbs->SetThreshold(0.05);
   ChAbs->FindExtrema();
   ChAbs->ConvertToLogic();
@@ -122,7 +125,6 @@ int main(int argc,char** argv)
   auto gPosVel = ChPos->GetVelocityGraph();
   auto hPosHWidth = ChPos->GetLevelWidthHist("High");
   auto hPosLWidth = ChPos->GetLevelWidthHist("Low");
-  auto gPosSmooth = ChPos->Smooth();
 
   auto gDirRaw = ChDir->GetRawGraph();
   auto gDirLog = ChDir->GetLogicLevelGraph();
@@ -263,10 +265,7 @@ int main(int argc,char** argv)
   gPosLog->Draw("sameL");
   gPosLog->SetLineWidth(2);
   gPosLog->SetLineColor(kRed);
-  
-  TCanvas c6("c6");
-  gPosSmooth->Draw("APL");
-  gPosSmooth->SetTitle("Smooth Regular Barcode");
+
 
   TFile* output = new TFile((string{argv[1]}+".root").c_str(),"recreate");
   ChPos->Write();
@@ -278,7 +277,6 @@ int main(int argc,char** argv)
   gPosCon->Write();
   gPosExt->Write();
   gPosVel->Write();
-  gPosSmooth->Write();
 
   gDirRaw->Write();
   gDirLog->Write();
@@ -315,7 +313,6 @@ int main(int argc,char** argv)
   c3.Write();
   c4.Write();
   c5.Write();
-  c6.Write();
   output->Close();
   return 0;
 }

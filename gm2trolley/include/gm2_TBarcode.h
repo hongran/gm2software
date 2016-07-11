@@ -109,6 +109,7 @@ class gm2_TBarcode : public TNamed
     shared_ptr<TGraph> GetIntervalGraph()const;
     shared_ptr<TGraph> GetLevelWidthGraph()const;
     shared_ptr<TH1D> GetLevelWidthHist(string LevelSelection)const;
+    void Smooth(int PointsAveraged = 5);
     
     //virtual method for determining the extrema
     virtual int FindExtrema() = 0;
@@ -121,6 +122,7 @@ class gm2_TRegBarcode : public gm2_TBarcode
   protected:
     vector<double> fAverage;
     vector<double> fContrast;
+    vector<int> fBigGapList;
   public:
     gm2_TRegBarcode(const TString& Name = TString{"EmptyName"}, const TString& Title = TString{"EmptyTitle"});
     gm2_TRegBarcode(const TString& Name, const TString& Title, vector<double> fx, vector<double> fy);
@@ -133,7 +135,7 @@ class gm2_TRegBarcode : public gm2_TBarcode
     shared_ptr<TGraph> GetVelocityGraph()const;
     //method for determining the extrema
     int FindExtrema();
-    shared_ptr<TGraph> Smooth();
+    int FindBigGaps();
 };
 
 class gm2_TAbsBarcode : public gm2_TBarcode

@@ -422,7 +422,43 @@ int gm2_TRegBarcode::FindExtrema()
   }
   return 0;
 }
-
+/**********************************************************************/
+int gm2_TRegBarcode::FindBigGaps(){
+	
+  if (!ExtremaFound){
+    cout << "Extrema for Barcode "<<fName<<" are not constructed!"<<endl;
+    return -1;
+  }
+  
+  auto NExtrema = fExtremaList.size();
+  double NIntervals = 0;
+  fBigGapList.clear();
+  double tot = 0;
+  
+  for (int i=0; i<NExtrema-1; i++){
+  	double interval = fX[fExtremaList[i+1]]-fX[fExtremaList[i]];
+  	tot += interval;
+  	interval = 0;
+  	++ NIntervals;
+  }
+  
+  double average = tot/NIntervals;
+  cout << "average: " << average << endl;
+  
+  for(int j=0; j<NExtrema-2; j++){
+  	double check_interval = fX[fExtremaList[j+1]]-fX[fExtremaList[j]];
+  	double check_interval2 = fX[fExtremaList[j+2]]-fX[fExtremaList[j+1]];
+  	
+  	if(check_interval > 2*average && check_interval2 > 2*average){
+  		fBigGapList.push_back(fX[fExtremaList[j]]);
+  	}
+  }
+  for(int k=0; k<fBigGapList.size(); k++){
+  	cout << "Big Gap Position: " << fBigGapList[k] << endl;
+  }
+  
+  return 0;
+}
 /**********************************************************************/
 int gm2_TBarcode::ConvertToLogic()
 {
@@ -521,24 +557,29 @@ int gm2_TBarcode::ConvertToLogic()
   return 0;
 }
 /*********************************************************************/
-shared_ptr<TGraph> gm2_TRegBarcode::Smooth(){
+void gm2_TBarcode::Smooth(int PointsAveraged){
 	Double_t tot = 0;  //Used to sum y values that will be averaged
 	
-	auto Smooth_graph = make_shared<TGraph>(fNPoints);
+	TGraph *Smooth_graph = new TGraph();
 	
 	for (Int_t k = 0; k<fNPoints; ++k){
 	
-		if(k>=fNPoints-4){
+		if(k>=fNPoints-(PointsAveraged-1)){ //Handle the last points
 			Smooth_graph->SetPoint(k,fX[k],fY[k-1]);
 			continue;
 		}
-		tot = tot + (fY[k] + fY[k+1] + fY[k+2] + fY[k+3] + fY[k+4])/5.;
+		for(int i=0; i<PointsAveraged; i++){
+			tot += fY[k+i];
+		}
+		tot = tot/PointsAveraged;
 		Smooth_graph->SetPoint(k,fX[k],tot);
-		tot = 0;
-		
+		tot = 0;	
 	}	
-  
-  return Smooth_graph;
+	Double_t *YSmooth = Smooth_graph->GetY();
+	
+	for(int j=0; j<fNPoints; ++j){
+		fY[j] = YSmooth[j];
+	}
 }
 /**********************************************************************/
 //Derived class TAbsBarcode
