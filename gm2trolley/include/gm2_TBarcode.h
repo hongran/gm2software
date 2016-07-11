@@ -46,7 +46,8 @@ namespace gm2Barcode{
     ZeroVelocity,
     StartRegion,
     EndRegion,
-    ChamberJunction
+    ChamberJunction,
+    BigGap
   };
 }
 
