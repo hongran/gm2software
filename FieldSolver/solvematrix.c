@@ -38,7 +38,7 @@ LIS_INT main(LIS_INT argc, char* argv[])
 {
     int mdim, ndim, id, jd, vid, vn, mmax, nmax;
     double tp;
-    long double tpl;
+    double tpl;
     FILE *mtrx, *vctr, *names, *coeffs, *vecdim;
     mtrx = fopen ("outmatrix.txt", "r");
     vecdim = fopen ("vecdim.txt", "r");

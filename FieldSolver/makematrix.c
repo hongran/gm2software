@@ -19,27 +19,27 @@ July 10, 2016
  * avoid overflow from gamma function */
 
 /* hypergeometric function 1F2 */
-long double h1f2(long double a, long double b, long double c, long double z);
+double h1f2(double a, double b, double c, double z);
 
 /* LegendreQ(m-1/2,n,cosh(x)) */
-long double LegendreQ(long double m, long double n, long double z);
+double LegendreQ(double m, double n, double z);
 
 /* derivative of LegendreQ(m-1/2,n,cosh(x)) */
-long double DLegendreQ(int m, int n, long double z);
+double DLegendreQ(int m, int n, double z);
 
 /* coordinate transformation r, z -> zeta */
-long double zetaf(long double rho, long double z, long double r0);
+double zetaf(double rho, double z, double r0);
 
 /* coordinate transformation r, z -> eta */
-long double etaf(long double rho, long double z, long double r0);
+double etaf(double rho, double z, double r0);
 
 /* main subroutine that calculates matrix and vector elements */
-void cpx(int procid, int **procdec, long double **datain, 
-         long double **cc, long double **cs, long double **sc, long double **ss,
-         long double ***matrix, 
-         long double *zeta, long double *eta, 
+void cpx(int procid, int **procdec, double **datain, 
+         double **cc, double **cs, double **sc, double **ss,
+         double ***matrix, 
+         double *zeta, double *eta, 
          int **ccidx, int ndatap, int dim1, 
-         long double zt0, long double rr, int *sliceflag);
+         double zt0, double rr, int *sliceflag);
 
 int main (int argc, char **argv) {
     int nmax, mmax, ndata, dim1, dim2, dim2x, vecdim;
@@ -51,20 +51,20 @@ int main (int argc, char **argv) {
     dim1=(nmax+1)*(mmax+1);
     dim2=dim1*dim1;
     dim2x=4*dim1;
-    long double cterm, rr;
-    long double **cc, **cs, **sc, **ss;
-    long double ***matrix, **datain;
-    long double datatmp;
-    long double zeta[30], eta[30];
-    long double zt, et, zt0, bzero;
-    long double angles[30], radii[30];
+    double cterm, rr;
+    double **cc, **cs, **sc, **ss;
+    double ***matrix, **datain;
+    double datatmp;
+    double zeta[30], eta[30];
+    double zt, et, zt0, bzero;
+    double angles[30], radii[30];
     int **ccidx;
     int **mnidx;
     int **procdec;
     int *sinz, *vecidx;
     int i, j, id, idx, md, nd, mdx, ndx, prb, na, ma, qidx;
     int ix, jx, ff, procid, procnum, ndatap, vecc;
-    long double tp, tx, phi, wgt, iwgt, legq, dleq;
+    double tp, tx, phi, wgt, iwgt, legq, dleq;
     FILE *input;
     FILE *inputc;
     procnum=11; // number of thread to use 
@@ -72,23 +72,23 @@ int main (int argc, char **argv) {
 
 //  declare vector and matrix elements as pointers 
 //  each thread retains its own for maximum speed 
-    cc=malloc((procnum+1)*sizeof(long double*));
-    cs=malloc((procnum+1)*sizeof(long double*));
-    sc=malloc((procnum+1)*sizeof(long double*));
-    ss=malloc((procnum+1)*sizeof(long double*));
+    cc=malloc((procnum+1)*sizeof(double*));
+    cs=malloc((procnum+1)*sizeof(double*));
+    sc=malloc((procnum+1)*sizeof(double*));
+    ss=malloc((procnum+1)*sizeof(double*));
     for (procid=0;procid<=procnum;procid++) {
-        cc[procid]=malloc((dim1+2)*sizeof(long double));
-        cs[procid]=malloc((dim1+2)*sizeof(long double));
-        sc[procid]=malloc((dim1+2)*sizeof(long double));
-        ss[procid]=malloc((dim1+2)*sizeof(long double));
+        cc[procid]=malloc((dim1+2)*sizeof(double));
+        cs[procid]=malloc((dim1+2)*sizeof(double));
+        sc[procid]=malloc((dim1+2)*sizeof(double));
+        ss[procid]=malloc((dim1+2)*sizeof(double));
     }
-    matrix=malloc((procnum+1)*sizeof(long double**));
+    matrix=malloc((procnum+1)*sizeof(double**));
     for (procid=0;procid<=procnum;procid++) {
-        matrix[procid]=malloc((dim2x+2)*sizeof(long double*));
+        matrix[procid]=malloc((dim2x+2)*sizeof(double*));
     }
     for (procid=0;procid<=procnum;procid++) {
         for (i=0;i<(dim2x+2);i++) {
-            matrix[procid][i]=malloc((dim2x+2)*sizeof(long double));
+            matrix[procid][i]=malloc((dim2x+2)*sizeof(double));
         }
     }
     sinz=malloc((dim2x+2)*sizeof(int)); // for identifying exact zeros 
@@ -106,7 +106,7 @@ int main (int argc, char **argv) {
     ndata=0;
   //  inputc=fopen("data40.txt", "r"); // open data for counting
     inputc=fopen("data52.txt", "r"); // open data for counting
-    while(fscanf(inputc, "%Lf", &datatmp)>0) {
+    while(fscanf(inputc, "%lf", &datatmp)>0) {
     ndata++;
     }
     ndata=ndata/26; // azimuthal angle + 25 probes 
@@ -114,9 +114,9 @@ int main (int argc, char **argv) {
     int sliceflag[ndata+1];
     printf("number of data = %d\n", ndata);
 //  this pointer will be used for data taking 
-    datain=malloc((ndata+1)*sizeof(long double*));
+    datain=malloc((ndata+1)*sizeof(double*));
     for (id=0;id<=ndata;id++) {
-        datain[id]=malloc((25+2)*sizeof(long double));
+        datain[id]=malloc((25+2)*sizeof(double));
     }
 //  distribute azimuthal slices to threads
     ndatap=ndata/procnum+(ndata % procnum != 0);
@@ -158,7 +158,7 @@ int main (int argc, char **argv) {
         radii[i]=45.;
     }
 /*    for (i=1;i<=25;i++) {
-        printf("probe %d location r=%Lf, theta=%Lf \n",i+1,radii[i],angles[i]);
+        printf("probe %d location r=%lf, theta=%lf \n",i+1,radii[i],angles[i]);
     } */
 
 //  calculate toroidal coordinates 
@@ -211,10 +211,10 @@ int main (int argc, char **argv) {
 //    input =fopen("data40.txt", "r"); // this one's for actually reading data
     input =fopen("data52.txt", "r"); // this one's for actually reading data
     for (id=1;id<=ndata;id++) {
-        fscanf (input, "%Lf", &datatmp); // read azimuthal angle in degrees 
+        fscanf (input, "%lf", &datatmp); // read azimuthal angle in degrees 
         datain[id][0]=datatmp;
         for (prb=1;prb<=25;prb++){ // loop over 25 probes 
-            fscanf (input, "%Lf", &datatmp); // read B-fields in kHz 
+            fscanf (input, "%lf", &datatmp); // read B-fields in kHz 
             datatmp=datatmp*0.001+61.7400000-bzero; // convert to MHz and offset
             datain[id][prb]=datatmp;
         }
@@ -274,18 +274,18 @@ int main (int argc, char **argv) {
     vecdim=0;
     for (i=1;i<=dim1;i++) {
         vecdim++;
-        fprintf(out1, "%.20Le\n", cc[0][i]);
+        fprintf(out1, "%.17g\n", cc[0][i]);
         if(sinz[4*(i-1)+2]!=0) {
             vecdim++;
-            fprintf(out1, "%.20Le\n", cs[0][i]);
+            fprintf(out1, "%.17g\n", cs[0][i]);
         }
         if(sinz[4*(i-1)+3]!=0) {
             vecdim++;
-            fprintf(out1, "%.20Le\n", sc[0][i]);
+            fprintf(out1, "%.17g\n", sc[0][i]);
         }
         if(sinz[4*(i-1)+4]!=0) {
             vecdim++;
-            fprintf(out1, "%.20Le\n", ss[0][i]);
+            fprintf(out1, "%.17g\n", ss[0][i]);
         }
     }
     id=0;
@@ -299,7 +299,7 @@ int main (int argc, char **argv) {
     for (i=1;i<=vecdim;i++) {
         for (j=1;j<=vecdim;j++) {
             vecc++;
-            fprintf(out0, "%.20Le\n", matrix[0][vecidx[i]][vecidx[j]]);
+            fprintf(out0, "%.17g\n", matrix[0][vecidx[i]][vecidx[j]]);
         }
     }
     fprintf(outd, "%d\n", vecdim);
@@ -318,10 +318,10 @@ int main (int argc, char **argv) {
 
 /* hypergeometric function 1F2 
    evaluated by truncating an infinite sum */
-long double h1f2(long double a, long double b, long double c, long double z){
+double h1f2(double a, double b, double c, double z){
     int i, imax;
-    long double err, tol, si, sii, f1f2;
-    long double errabs, errrel;
+    double err, tol, si, sii, f1f2;
+    double errabs, errrel;
     imax=100000000; // 10^8 maximum iterations
     sii=1.; // initial term 
     err=1.; // estimated uncertainty 
@@ -353,8 +353,8 @@ long double h1f2(long double a, long double b, long double c, long double z){
 /* Legendre function of the second kind, Q_{m+1/2}^n (cosh(z)).
    Normalized to remove gamma function.
    Regular inside the torus */
-long double LegendreQ(long double m, long double n, long double z){
-    long double lq;
+double LegendreQ(double m, double n, double z){
+    double lq;
     lq=pow(tanh(z),n)/pow(cosh(z),m+.5);
     lq=lq*h1f2(.5*(m+n+.5),.5*(m+n+1.5),m+1.,1./cosh(z)/cosh(z));
     return lq;
@@ -363,8 +363,8 @@ long double LegendreQ(long double m, long double n, long double z){
 /* Derivative of Q_{m+1/2}^n (cosh(z)).
    Normalized to remove gamma function.
  */
-long double DLegendreQ(int m, int n, long double z){
-    long double dlq, lq1, lq2;
+double DLegendreQ(int m, int n, double z){
+    double dlq, lq1, lq2;
     if (m==0) {
         dlq=-1/(8*pow(cosh(z),1.5))/sinh(z);
         dlq=dlq*pow(tanh(z),n);
@@ -384,15 +384,15 @@ long double DLegendreQ(int m, int n, long double z){
 }
 
 /* coordinate transformation r, z -> zeta */
-long double zetaf(long double rho, long double z, long double r0){
-    long double zetax;
+double zetaf(double rho, double z, double r0){
+    double zetax;
     zetax=atanhl(2.*rho*r0/(rho*rho+r0*r0+z*z));
     return zetax;
 }
 
 /* coordinate transformation r, z -> eta */
-long double etaf(long double rho, long double z, long double r0){
-    long double etax, xx;
+double etaf(double rho, double z, double r0){
+    double etax, xx;
     int i;
     xx=2.*r0*z/(rho*rho-r0*r0+z*z);
     if (fabsl(xx)<0.001) {
@@ -409,20 +409,20 @@ long double etaf(long double rho, long double z, long double r0){
     return etax;
 }
 
-void cpx(int procid, int **procdec, long double **datain, 
-         long double **cc, long double **cs, long double **sc, long double **ss,
-         long double ***matrix, 
-         long double *zeta, long double *eta, 
+void cpx(int procid, int **procdec, double **datain, 
+         double **cc, double **cs, double **sc, double **ss,
+         double ***matrix, 
+         double *zeta, double *eta, 
          int **ccidx, int ndatap, int dim1, 
-         long double zt0, long double rr, int *sliceflag) {
-    long double datatmp, zt, et, wgt, phi;
-    long double *tcc, *tcs, *tsc, *tss;
-    tcc=(long double *)malloc(sizeof*tcc*(dim1+2));
-    tcs=(long double *)malloc(sizeof*tcs*(dim1+2));
-    tsc=(long double *)malloc(sizeof*tsc*(dim1+2));
-    tss=(long double *)malloc(sizeof*tss*(dim1+2));
+         double zt0, double rr, int *sliceflag) {
+    double datatmp, zt, et, wgt, phi;
+    double *tcc, *tcs, *tsc, *tss;
+    tcc=(double *)malloc(sizeof*tcc*(dim1+2));
+    tcs=(double *)malloc(sizeof*tcs*(dim1+2));
+    tsc=(double *)malloc(sizeof*tsc*(dim1+2));
+    tss=(double *)malloc(sizeof*tss*(dim1+2));
     int md, nd, i, id, prb, j, ix, jx, ixx;
-    long double legq, dleq;
+    double legq, dleq;
     printf("Starting thread %d\n",procid);
     for (ixx=1;ixx<=ndatap;ixx++) { // loop over azimuthal slices 
         id=procdec[procid+1][ixx];
@@ -502,7 +502,7 @@ void cpx(int procid, int **procdec, long double **datain,
             } // define vector loop end 
 // for each data end
         } // probe loop end 
-//    printf ("\nSlice %d (phi=%Lf) done\n", id, phi);
+//    printf ("\nSlice %d (phi=%lf) done\n", id, phi);
     printf ("\nThread %d, localid %d of %d done\n", procid, ixx, ndatap);
     }} // id end 
     free(tcc);

@@ -16,19 +16,19 @@ July 10, 2016
 #include <math.h>
 
 /* hypergeometric function 1F2 */
-long double h1f2(long double a, long double b, long double c, long double z);
+double h1f2(double a, double b, double c, double z);
 
 /* LegendreQ(m-1/2,n,cosh(x)) */
-long double LegendreQ(long double m, long double n, long double z);
+double LegendreQ(double m, double n, double z);
 
 /* derivative of LegendreQ(m-1/2,n,cosh(x)) */
-long double DLegendreQ(int m, int n, long double z);
+double DLegendreQ(int m, int n, double z);
 
 /* coordinate transformation r, z -> zeta */
-long double zetaf(long double rho, long double z, long double r0);
+double zetaf(double rho, double z, double r0);
 
 /* coordinate transformation r, z -> eta */
-long double etaf(long double rho, long double z, long double r0);
+double etaf(double rho, double z, double r0);
 
 int main () {
     int nmax, mmax, nphi, dim1, dim2;
@@ -46,24 +46,24 @@ int main () {
 //    fscanf (input, "%d", &nmax); // read n Maximum
     printf("MMax %d, NMax %d \n",mmax, nmax);
     dim1=(nmax+1)*(mmax+1); // coefficients dimensions 
-    long double cterm, rr;
-    long double *cc, *cs, *sc, *ss, *lsigma;
+    double cterm, rr;
+    double *cc, *cs, *sc, *ss, *lsigma;
     int **ccidx;
     int *midx;
     int *nidx;
 //    int ccidx[mmax+2][nmax+2];
-    long double zeta[30], eta[30];
-    long double zt, et, zt0, bzero, br, bz, bphi, bsize;
-    long double dataread[30], difrms, dzrms, ffrms, rmsd;
-    long double angles[30], radii[30], bfield[30][5];
+    double zeta[30], eta[30];
+    double zt, et, zt0, bzero, br, bz, bphi, bsize;
+    double dataread[30], difrms, dzrms, ffrms, rmsd;
+    double angles[30], radii[30], bfield[30][5];
     int i, j, id, idx, md, nd, mdx, ndx, prb, na, ma, qidx, vid;
-    long double datatmp, tp, tx, phi, wgt, iwgt, legq, dleq;
-    long double phidz, phidp, phide, phide1, phide2;
-    cc=(long double *)malloc(sizeof*cc*(dim1+2));
-    cs=(long double *)malloc(sizeof*cs*(dim1+2));
-    sc=(long double *)malloc(sizeof*sc*(dim1+2));
-    ss=(long double *)malloc(sizeof*ss*(dim1+2));
-    lsigma=(long double *)malloc(sizeof*lsigma*(nmax+2));
+    double datatmp, tp, tx, phi, wgt, iwgt, legq, dleq;
+    double phidz, phidp, phide, phide1, phide2;
+    cc=(double *)malloc(sizeof*cc*(dim1+2));
+    cs=(double *)malloc(sizeof*cs*(dim1+2));
+    sc=(double *)malloc(sizeof*sc*(dim1+2));
+    ss=(double *)malloc(sizeof*ss*(dim1+2));
+    lsigma=(double *)malloc(sizeof*lsigma*(nmax+2));
     ccidx=malloc((dim1+2)*sizeof(int*));
     if(ccidx==NULL){
         printf("out of memory\n");
@@ -92,7 +92,7 @@ int main () {
         radii[i]=45.;
     }
     for (i=1;i<=25;i++) {
-        printf("probe %d location r=%Lf, theta=%Lf \n",i,radii[i],angles[i]);
+        printf("probe %d location r=%.17g, theta=%.17g \n",i,radii[i],angles[i]);
     }
 
 //  calculate toroidal coordinates 
@@ -128,10 +128,10 @@ int main () {
     }
     for (idx=1;idx<=dim1*4;idx++) { // read coefficients
         fscanf (iname, "%d \t %d \t %d", &id, &ma, &na); 
-//        fscanf (input, "%d \t %d \t %d \t %Lf", &id, &ma, &na, &tp); 
-        fscanf (input, "%Lf", &tp); 
-        printf("%d, %d, %Lf \n", id, ccidx[ma][na], tp);
-//        if (tp!=tp) printf("%d, %d, %Lf \n", id, ccidx[ma][na], tp);
+//        fscanf (input, "%d \t %d \t %d \t %lg", &id, &ma, &na, &tp); 
+        fscanf (input, "%lg", &tp); 
+        printf("%d, %d, %lg \n", id, ccidx[ma][na], tp);
+//        if (tp!=tp) printf("%d, %d, %lg \n", id, ccidx[ma][na], tp);
         if (id==1) {
 //            printf("cc \n");
             cc[ccidx[ma][na]]=tp;
@@ -151,14 +151,14 @@ int main () {
         else {
             printf("error \n");
         }
-//        printf("%.20Lf \n",tp);
+//        printf("%.20lg \n",tp);
     }
     fclose(input); // close data 
     fclose(iname); // close data 
     printf ("\nComputing b-fields\n");
     nphi=0;
     datac=fopen("data52.txt", "r"); // open data for counting
-    while(fscanf(datac, "%Lf", &datatmp)>0) {
+    while(fscanf(datac, "%lg", &datatmp)>0) {
     nphi++;
     }
     nphi=nphi/26; // azimuthal angle + 25 probes 
@@ -167,10 +167,10 @@ int main () {
     dzrms=0.;
     ffrms=0.;
     for (id=1;id<=nphi;id++) { // loop over azimuthal slices 
-        fscanf (datafile, "%Lf", &dataread[0]); // read azimuthal angle in degrees 
+        fscanf (datafile, "%lg", &dataread[0]); // read azimuthal angle in degrees 
         phi=dataread[0]*M_PI/180.;
         for (prb=1;prb<=25;prb++){ // loop over 25 probes 
-            fscanf (datafile, "%Lf", &dataread[prb]); 
+            fscanf (datafile, "%lg", &dataread[prb]); 
             dataread[prb]=dataread[prb]*0.001+61.7400000;
             zt=zeta[prb];  // zeta coordinate at probe 
             et=eta[prb];  // eta coordinate at probe 
@@ -218,16 +218,16 @@ int main () {
             bfield[prb][2]=br;
             bfield[prb][3]=bphi;
 	    //Output
-	    if(prb==1)fprintf(outputR,"%LF %LF %LF\n",phi,dataread[prb],bfield[prb][2]);
-	    if(prb==1)fprintf(outputPhi,"%LF %LF %LF\n",phi,dataread[prb],bfield[prb][3]);
-	    fprintf(output,"%LF %d %LF %LF %LF %LF %LF\n",phi,prb,dataread[prb],bfield[prb][1],bfield[prb][2],bfield[prb][3],bfield[prb][4]);
+	    if(prb==1)fprintf(outputR,"%.17g %.17g %.17g\n",phi,dataread[prb],bfield[prb][2]);
+	    if(prb==1)fprintf(outputPhi,"%.17g %.17g %.17g\n",phi,dataread[prb],bfield[prb][3]);
+	    fprintf(output,"%.17g %d %.17g %.17g %.17g %.17g %.17g\n",phi,prb,dataread[prb],bfield[prb][1],bfield[prb][2],bfield[prb][3],bfield[prb][4]);
             rmsd=(dataread[prb]-bfield[prb][4])*(dataread[prb]-bfield[prb][4]);
             difrms+=rmsd;
             rmsd=rmsd/bzero/bzero;
             dzrms+=(dataread[prb]-bz)*(dataread[prb]-bz);
             ffrms+=(dataread[prb]-bzero)*(dataread[prb]-bzero);
         }
-        printf("Slice %d (phi=%Lf) of %d done (%Lf, %Lf, %Lf) \n",
+        printf("Slice %d (phi=%.17g) of %d done (%.17g, %.17g, %.17g) \n",
                 id, phi, nphi, difrms, dzrms, ffrms);
     }
     difrms=difrms/bzero/bzero/nphi/25;
@@ -236,9 +236,9 @@ int main () {
     difrms=sqrt(difrms)*1000000.;
     dzrms=sqrt(dzrms)*1000000.;
     ffrms=sqrt(ffrms)*1000000.;
-    printf("RMS fluctuation = %Lf ppm \n", ffrms);
-    printf("RMS difference (lin. approx.) = %Lf ppm \n", dzrms);
-    printf("RMS difference (real) = %Lf ppm \n", difrms);
+    printf("RMS fluctuation = %.17g ppm \n", ffrms);
+    printf("RMS difference (lin. approx.) = %.17g ppm \n", dzrms);
+    printf("RMS difference (real) = %.17g ppm \n", difrms);
     /* calculate coeffs */
 /*
     cterm=0.;
@@ -336,10 +336,10 @@ int main () {
 
 /* hypergeometric function 1F2 
    evaluated by truncating an infinite sum */
-long double h1f2(long double a, long double b, long double c, long double z){
+double h1f2(double a, double b, double c, double z){
 	int i, imax;
-	long double err, tol, si, sii, f1f2;
-	long double errabs, errrel;
+	double err, tol, si, sii, f1f2;
+	double errabs, errrel;
 	imax=100000000; // 10^8 maximum iterations
 	sii=1.; // initial term 
 	err=1.; // estimated uncertainty 
@@ -370,8 +370,8 @@ long double h1f2(long double a, long double b, long double c, long double z){
 /* Legendre function of the second kind, Q_{m+1/2}^n (cosh(z)).
    Normalized to remove gamma function.
    Regular inside the torus */
-long double LegendreQ(long double m, long double n, long double z){
-    long double lq;
+double LegendreQ(double m, double n, double z){
+    double lq;
 //    lq=pow(M_PI,.5)*exp(lgammal(m+n+.5))/(pow(2.,m+.5)*exp(lgammal(m+1.)));
     lq=pow(tanh(z),n)/pow(cosh(z),m+.5);
     lq=lq*h1f2(.5*(m+n+.5),.5*(m+n+1.5),m+1.,1./cosh(z)/cosh(z));
@@ -381,8 +381,8 @@ long double LegendreQ(long double m, long double n, long double z){
 /* Derivative of Q_{m+1/2}^n (cosh(z)).
    Normalized to remove gamma function.
  */
-long double DLegendreQ(int m, int n, long double z){
-    long double dlq, lq1, lq2;
+double DLegendreQ(int m, int n, double z){
+    double dlq, lq1, lq2;
     if (m==0) {
         dlq=-1/(8*pow(cosh(z),1.5))/sinh(z);
         dlq=dlq*pow(tanh(z),n);
@@ -402,15 +402,15 @@ long double DLegendreQ(int m, int n, long double z){
 }
 
 /* coordinate transformation r, z -> zeta */
-long double zetaf(long double rho, long double z, long double r0){
-    long double zetax;
+double zetaf(double rho, double z, double r0){
+    double zetax;
     zetax=atanhl(2.*rho*r0/(rho*rho+r0*r0+z*z));
     return zetax;
 }
 
 /* coordinate transformation r, z -> eta */
-long double etaf(long double rho, long double z, long double r0){
-    long double etax, xx;
+double etaf(double rho, double z, double r0){
+    double etax, xx;
     int i;
     xx=2.*r0*z/(rho*rho-r0*r0+z*z);
     if (fabsl(xx)<0.001) {
