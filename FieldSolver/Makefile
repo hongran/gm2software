@@ -6,4 +6,4 @@ solvematrix: solvematrix.o
 solvematrix.o: solvematrix.c
 	gcc -lm -c -fopenmp -I~/lis-1.5.65/include solvematrix.c
 calculatebfield: calculatebfield.cpp
-	g++ -o calculatebfield calculatebfield.cpp -lm `root-config --cflags --libs`
+	g++ -o calculatebfield calculatebfield.cpp -pthread -lm `root-config --cflags --libs`

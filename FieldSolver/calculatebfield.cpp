@@ -16,6 +16,9 @@ July 10, 2016
 #include <math.h>
 #include <TTree.h>
 #include <TFile.h>
+#include <thread>
+#include <iostream>
+#include <mutex>
 
 /* hypergeometric function 1F2 */
 double h1f2(double a, double b, double c, double z);
@@ -36,13 +39,34 @@ typedef struct B_Struct{
   double Prb[25];
 }B_Struct;
 
+using namespace std;
+//Globals
+
+double *cc, *cs, *sc, *ss, *lsigma;
+int **ccidx;
+int *midx;
+int *nidx;
+double **Tlegq;
+double **Tdleq;
+double zeta[30], eta[30];
+double ** dataread;
+
+B_Struct *B_Fit_array;
+B_Struct *B_ZFit_array;
+B_Struct *B_RFit_array;
+B_Struct *B_PhiFit_array;
+
+mutex mlock;
+
+void thread_call(const double rr,const double bzero,const int dim1,int tid,int blocksize,int nphi);
+
 int main () {
     int nmax, mmax, nphi, dim1, dim2;
     FILE *input, *iname, *datafile, *datac , *output;
+    int Nthread = 8;
 //    input = fopen ("fitcoeffN.txt", "r");
     input = fopen ("fitc.txt", "r");
     iname = fopen ("outnames.txt", "r");
-    datafile = fopen ("data52.txt", "r");
     output = fopen ("output52full.txt","w");
     fscanf (iname, "%d", &mmax); // read m Maximum
     fscanf (iname, "%d", &nmax); // read n Maximum
@@ -51,14 +75,10 @@ int main () {
     printf("MMax %d, NMax %d \n",mmax, nmax);
     dim1=(nmax+1)*(mmax+1); // coefficients dimensions 
     double cterm, rr;
-    double *cc, *cs, *sc, *ss, *lsigma;
-    int **ccidx;
-    int *midx;
-    int *nidx;
 //    int ccidx[mmax+2][nmax+2];
-    double zeta[30], eta[30];
     double zt, et, zt0, bzero, br, bz, bphi, bsize;
-    double dataread[30], difrms, dzrms, ffrms, rmsd;
+    double difrms, dzrms, ffrms, rmsd;
+    double datareadold[30];
     double angles[30], radii[30], bfield[30][5];
     int i, j, id, idx, md, nd, mdx, ndx, prb, na, ma, qidx, vid;
     double datatmp, tp, tx, phi, wgt, iwgt, legq, dleq;
@@ -172,9 +192,63 @@ int main () {
     }
     nphi=nphi/26; // azimuthal angle + 25 probes 
     fclose(datac); // close data file used for counting 
+    //Allocate memory for parallel calculation
+    B_Fit_array = (B_Struct*)malloc(sizeof(B_Struct)*nphi);
+    B_ZFit_array = (B_Struct*)malloc(sizeof(B_Struct)*nphi);
+    B_RFit_array = (B_Struct*)malloc(sizeof(B_Struct)*nphi);
+    B_PhiFit_array = (B_Struct*)malloc(sizeof(B_Struct)*nphi);
+
+    //Loading data first
+    dataread = (double **)malloc(sizeof(double*)*26*nphi);
+    for (i=0;i<nphi;i++){
+      dataread[i] = (double *)malloc(sizeof(double)*26);
+    }
+    double tmp;
+    datafile = fopen ("data52.txt", "r");
+    for (id=0;id<nphi;id++) { // loop over azimuthal slices 
+      fscanf (datafile, "%lg", &tmp); // read azimuthal angle in degrees 
+      dataread[id][0]=tmp*M_PI/180.;
+      for (prb=1;prb<=25;prb++){ // loop over 25 probes 
+	fscanf (datafile, "%lg", &tmp); 
+	dataread[id][prb]=tmp*0.001+61.7400000;
+      }
+    }
+    fclose(datafile);
+    //Calculate legq and dleq table
+    Tlegq=(double **)malloc((dim1+1)*sizeof(double*));
+    Tdleq=(double **)malloc((dim1+1)*sizeof(double*));
+    for (int il=0;il<=dim1;il++) {
+      Tlegq[il]=(double *)malloc(26*sizeof(double));
+      Tdleq[il]=(double *)malloc(26*sizeof(double));
+    }
+    for (prb=1;prb<=25;prb++){ // loop over 25 probes 
+      zt=zeta[prb];  // zeta coordinate at probe 
+      for (i=1;i<=dim1;i++){
+	md=ccidx[i][1]; // m index 
+	nd=ccidx[i][2]; // n index 
+	/* LegendreQ at probe */
+	Tlegq[i][prb]=LegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
+	/* Derivative of LegendreQ at probe */
+	Tdleq[i][prb]=DLegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
+      }
+    }
+
+    //
     difrms=0.;
     dzrms=0.;
     ffrms=0.;
+
+    //Start parallel computing
+    thread *thread_array;
+    thread_array = new thread[Nthread]();
+    for (int i=0;i<Nthread;i++){
+      thread_array[i]=thread(thread_call,rr,bzero,dim1,i,nphi/Nthread+1,nphi);
+    }
+    //End parallel computing
+    for (int i=0;i<Nthread;i++){
+      thread_array[i].join();
+    }
+    
     //open Root tree
     TFile *outfile = new TFile("RootOut52.root","recreate");
     TTree *Tree_Measured = new TTree ("Tree_Measured", "Measured field");
@@ -186,74 +260,33 @@ int main () {
     Tree_Fit->Branch("BFieldZ",&B_Fit,"Prb1/D:Prb2:Prb3:Prb4:Prb5:Prb6:Prb7:Prb8:Prb9:Prb10:Prb11:Prb12:Prb13:Prb14:Prb15:Prb16:Prb17:Prb18:Prb19:Prb20:Prb21:Prb22:Prb23:Prb24:Prb25");
     Tree_Fit->Branch("BFieldR",&B_Fit,"Prb1/D:Prb2:Prb3:Prb4:Prb5:Prb6:Prb7:Prb8:Prb9:Prb10:Prb11:Prb12:Prb13:Prb14:Prb15:Prb16:Prb17:Prb18:Prb19:Prb20:Prb21:Prb22:Prb23:Prb24:Prb25");
     Tree_Fit->Branch("BFieldPhi",&B_Fit,"Prb1/D:Prb2:Prb3:Prb4:Prb5:Prb6:Prb7:Prb8:Prb9:Prb10:Prb11:Prb12:Prb13:Prb14:Prb15:Prb16:Prb17:Prb18:Prb19:Prb20:Prb21:Prb22:Prb23:Prb24:Prb25");
-    for (id=1;id<=nphi;id++) { // loop over azimuthal slices 
-        fscanf (datafile, "%lg", &dataread[0]); // read azimuthal angle in degrees 
-        phi=dataread[0]*M_PI/180.;
-        for (prb=1;prb<=25;prb++){ // loop over 25 probes 
-            fscanf (datafile, "%lg", &dataread[prb]); 
-            dataread[prb]=dataread[prb]*0.001+61.7400000;
-            zt=zeta[prb];  // zeta coordinate at probe 
-            et=eta[prb];  // eta coordinate at probe 
-//            printf("%Lf, %Lf \n", zt, et);
-            wgt=sqrt(cosh(zt)-cos(et)); // weight func in toroidal coordinates 
-            br=0.; bz=bzero; bphi=0.;
-            for (i=1;i<=dim1;i++){
-                md=midx[i]; // m index 
-                nd=nidx[i]; // n index 
-//                printf("%d, %d \n", md, nd);
-// LegendreQ at probe
-                legq=LegendreQ(md,nd,zt)/LegendreQ(md,nd,zt0);
-// Derivative of LegendreQ at probe
-                dleq=DLegendreQ(md,nd,zt)/LegendreQ(md,nd,zt0);
-//                printf("(%d, %d, %Lf) : %Lf, %Lf \n", md,nd,zt,legq, dleq);
-                phidz=cc[ccidx[md][nd]]*cos(nd*phi)*cos(md*et)+  \
-                      sc[ccidx[md][nd]]*cos(nd*phi)*sin(md*et)+  \
-                      cs[ccidx[md][nd]]*sin(nd*phi)*cos(md*et)+  \
-                      ss[ccidx[md][nd]]*sin(nd*phi)*sin(md*et);
-                phidz=phidz*(sinh(zt)/2./wgt*legq + wgt*dleq);
-                phidp=-cc[ccidx[md][nd]]*sin(nd*phi)*cos(md*et)-  \
-                      sc[ccidx[md][nd]]*sin(nd*phi)*sin(md*et)+  \
-                      cs[ccidx[md][nd]]*cos(nd*phi)*cos(md*et)+  \
-                      ss[ccidx[md][nd]]*cos(nd*phi)*sin(md*et);
-                phidp=phidp*nd*wgt*legq;
-                phide1=cc[ccidx[md][nd]]*cos(nd*phi)*cos(md*et)+  \
-                       sc[ccidx[md][nd]]*cos(nd*phi)*sin(md*et)+  \
-                       cs[ccidx[md][nd]]*sin(nd*phi)*cos(md*et)+  \
-                       ss[ccidx[md][nd]]*sin(nd*phi)*sin(md*et);
-                phide1=phide1*sin(et)/2./wgt*legq;
-                phide2=-cc[ccidx[md][nd]]*cos(nd*phi)*sin(md*et)+  \
-                       sc[ccidx[md][nd]]*cos(nd*phi)*cos(md*et)-  \
-                       cs[ccidx[md][nd]]*sin(nd*phi)*sin(md*et)+  \
-                       ss[ccidx[md][nd]]*sin(nd*phi)*cos(md*et);
-                phide2=phide2*md*wgt*legq;
-                phide=phide1+phide2;
-                br=br+sinh(zt)/rr*((1.-cosh(zt)*cos(et))/sinh(zt)*phidz-sin(et)*phide);
-                bz=bz+sinh(zt)/rr*(-sin(et)*phidz-(1.-cosh(zt)*cos(et))/sinh(zt)*phide);
-                bphi=bphi+(cosh(zt)-cos(et))/(rr*sinh(zt))*phidp;
-            }
-            bsize=sqrt(br*br+bz*bz+bphi*bphi);
-//            printf("%Lf \n",bsize);
-            bfield[prb][4]=bsize;
-            bfield[prb][1]=bz;
-            bfield[prb][2]=br;
-            bfield[prb][3]=bphi;
-	    B_Fit.Prb[prb-1]=bsize;
-	    B_ZFit.Prb[prb-1]=bz;
-	    B_RFit.Prb[prb-1]=br;
-	    B_PhiFit.Prb[prb-1]=bphi;
-	    B_Measure.Prb[prb-1]=dataread[prb];
-	    //Output
-	    fprintf(output,"%.17g %d %.17g %.17g %.17g %.17g %.17g\n",phi,prb,dataread[prb],bfield[prb][1],bfield[prb][2],bfield[prb][3],bfield[prb][4]);
-            rmsd=(dataread[prb]-bfield[prb][4])*(dataread[prb]-bfield[prb][4]);
-            difrms+=rmsd;
-            rmsd=rmsd/bzero/bzero;
-            dzrms+=(dataread[prb]-bz)*(dataread[prb]-bz);
-            ffrms+=(dataread[prb]-bzero)*(dataread[prb]-bzero);
-        }
-        printf("Slice %d (phi=%.17g) of %d done (%.17g, %.17g, %.17g) \n",
-                id, phi, nphi, difrms, dzrms, ffrms);
-	Tree_Measured->Fill();
-	Tree_Fit->Fill();
+    for (id=0;id<nphi;id++) { // loop over azimuthal slices 
+      phi=dataread[id][0];
+      for (prb=1;prb<=25;prb++){ // loop over 25 probes 
+	br=B_RFit_array[id].Prb[prb-1];
+	bz=B_ZFit_array[id].Prb[prb-1];
+	bphi=B_PhiFit_array[id].Prb[prb-1];
+	bsize=sqrt(br*br+bz*bz+bphi*bphi);
+	//            printf("%Lf \n",bsize);
+	bfield[prb][4]=bsize;
+	bfield[prb][1]=bz;
+	bfield[prb][2]=br;
+	bfield[prb][3]=bphi;
+	B_Fit.Prb[prb-1]=bsize;
+	B_ZFit.Prb[prb-1]=bz;
+	B_RFit.Prb[prb-1]=br;
+	B_PhiFit.Prb[prb-1]=bphi;
+	B_Measure.Prb[prb-1]=dataread[id][prb];
+	//Output
+	fprintf(output,"%.17g %d %.17g %.17g %.17g %.17g %.17g\n",phi,prb,dataread[id][prb],bfield[prb][1],bfield[prb][2],bfield[prb][3],bfield[prb][4]);
+	rmsd=(dataread[id][prb]-bfield[prb][4])*(dataread[id][prb]-bfield[prb][4]);
+	difrms+=rmsd;
+	rmsd=rmsd/bzero/bzero;
+	dzrms+=(dataread[id][prb]-bz)*(dataread[id][prb]-bz);
+	ffrms+=(dataread[id][prb]-bzero)*(dataread[id][prb]-bzero);
+      }
+      Tree_Measured->Fill();
+      Tree_Fit->Fill();
     }
     Tree_Measured->Write();
     Tree_Fit->Write();
@@ -274,6 +307,21 @@ int main () {
     free(sc);
     free(ss);
     free(ccidx);
+    for (int il=0;il<=dim1;il++) {
+      free(Tlegq[il]);
+      free(Tdleq[il]);
+    }
+    free(Tlegq);
+    free(Tdleq);
+    for (int il=0;il<nphi;il++) {
+      free(dataread[il]);
+    }
+    free(dataread);
+
+    free(B_Fit_array);
+    free(B_ZFit_array);
+    free(B_RFit_array);
+    free(B_PhiFit_array);
 
     return 0;
 }
@@ -372,7 +420,66 @@ double etaf(double rho, double z, double r0){
 }
 
 
-
+//Function for each thread call
+void thread_call(const double rr,const double bzero,const int dim1,int tid,int blocksize,int nphi){
+  for (int il=0;il<blocksize;il++) { // loop over azimuthal slices 
+    int id = tid*blocksize+il;
+    if (id>=nphi)return;
+    double phi=dataread[id][0];
+    for (int prb=1;prb<=25;prb++){ // loop over 25 probes 
+      double zt=zeta[prb];  // zeta coordinate at probe 
+      double et=eta[prb];  // eta coordinate at probe 
+      //            printf("%Lf, %Lf \n", zt, et);
+      double wgt=sqrt(cosh(zt)-cos(et)); // weight func in toroidal coordinates 
+      double br=0.; 
+      double bz=bzero; 
+      double bphi=0.;
+      for (int i=1;i<=dim1;i++){
+	int md=midx[i]; // m index 
+	int nd=nidx[i]; // n index 
+	//                printf("%d, %d \n", md, nd);
+	/* LegendreQ at probe */
+	double legq=Tlegq[i][prb];
+	/* Derivative of LegendreQ at probe */
+	double dleq=Tdleq[i][prb];
+	//                printf("(%d, %d, %Lf) : %Lf, %Lf \n", md,nd,zt,legq, dleq);
+	double phidz=cc[ccidx[md][nd]]*cos(nd*phi)*cos(md*et)+  \
+		     sc[ccidx[md][nd]]*cos(nd*phi)*sin(md*et)+  \
+		     cs[ccidx[md][nd]]*sin(nd*phi)*cos(md*et)+  \
+		     ss[ccidx[md][nd]]*sin(nd*phi)*sin(md*et);
+	phidz=phidz*(sinh(zt)/2./wgt*legq + wgt*dleq);
+	double phidp=-cc[ccidx[md][nd]]*sin(nd*phi)*cos(md*et)-  \
+		     sc[ccidx[md][nd]]*sin(nd*phi)*sin(md*et)+  \
+		     cs[ccidx[md][nd]]*cos(nd*phi)*cos(md*et)+  \
+		     ss[ccidx[md][nd]]*cos(nd*phi)*sin(md*et);
+	phidp=phidp*nd*wgt*legq;
+	double phide1=cc[ccidx[md][nd]]*cos(nd*phi)*cos(md*et)+  \
+		      sc[ccidx[md][nd]]*cos(nd*phi)*sin(md*et)+  \
+		      cs[ccidx[md][nd]]*sin(nd*phi)*cos(md*et)+  \
+		      ss[ccidx[md][nd]]*sin(nd*phi)*sin(md*et);
+	phide1=phide1*sin(et)/2./wgt*legq;
+	double phide2=-cc[ccidx[md][nd]]*cos(nd*phi)*sin(md*et)+  \
+		      sc[ccidx[md][nd]]*cos(nd*phi)*cos(md*et)-  \
+		      cs[ccidx[md][nd]]*sin(nd*phi)*sin(md*et)+  \
+		      ss[ccidx[md][nd]]*sin(nd*phi)*cos(md*et);
+	phide2=phide2*md*wgt*legq;
+	double phide=phide1+phide2;
+	br=br+sinh(zt)/rr*((1.-cosh(zt)*cos(et))/sinh(zt)*phidz-sin(et)*phide);
+	bz=bz+sinh(zt)/rr*(-sin(et)*phidz-(1.-cosh(zt)*cos(et))/sinh(zt)*phide);
+	bphi=bphi+(cosh(zt)-cos(et))/(rr*sinh(zt))*phidp;
+      }
+      double bsize=sqrt(br*br+bz*bz+bphi*bphi);
+      //            printf("%Lf \n",bsize);
+      B_Fit_array[id].Prb[prb-1]=bsize;
+      B_ZFit_array[id].Prb[prb-1]=bz;
+      B_RFit_array[id].Prb[prb-1]=br;
+      B_PhiFit_array[id].Prb[prb-1]=bphi;
+    }
+    mlock.lock();
+    printf("Local Slice %d (phi=%.17g) of %d done %f percent \n",il, phi, blocksize,double(il)/double(blocksize)*100 );
+    mlock.unlock();
+  }
+}
 
 
 
