@@ -14,6 +14,8 @@ July 10, 2016
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <TTree.h>
+#include <TFile.h>
 
 /* hypergeometric function 1F2 */
 double h1f2(double a, double b, double c, double z);
@@ -30,16 +32,18 @@ double zetaf(double rho, double z, double r0);
 /* coordinate transformation r, z -> eta */
 double etaf(double rho, double z, double r0);
 
+typedef struct B_Struct{
+  double Prb[25];
+}B_Struct;
+
 int main () {
     int nmax, mmax, nphi, dim1, dim2;
-    FILE *input, *iname, *datafile, *datac , *output, *outputR, *outputPhi;
+    FILE *input, *iname, *datafile, *datac , *output;
 //    input = fopen ("fitcoeffN.txt", "r");
     input = fopen ("fitc.txt", "r");
     iname = fopen ("outnames.txt", "r");
     datafile = fopen ("data52.txt", "r");
     output = fopen ("output52full.txt","w");
-    outputR = fopen ("output52R.txt","w");
-    outputPhi = fopen ("output52Phi.txt","w");
     fscanf (iname, "%d", &mmax); // read m Maximum
     fscanf (iname, "%d", &nmax); // read n Maximum
 //    fscanf (input, "%d", &mmax); // read m Maximum
@@ -59,23 +63,28 @@ int main () {
     int i, j, id, idx, md, nd, mdx, ndx, prb, na, ma, qidx, vid;
     double datatmp, tp, tx, phi, wgt, iwgt, legq, dleq;
     double phidz, phidp, phide, phide1, phide2;
+    B_Struct B_Measure;
+    B_Struct B_Fit;
+    B_Struct B_ZFit;
+    B_Struct B_RFit;
+    B_Struct B_PhiFit;
     cc=(double *)malloc(sizeof*cc*(dim1+2));
     cs=(double *)malloc(sizeof*cs*(dim1+2));
     sc=(double *)malloc(sizeof*sc*(dim1+2));
     ss=(double *)malloc(sizeof*ss*(dim1+2));
     lsigma=(double *)malloc(sizeof*lsigma*(nmax+2));
-    ccidx=malloc((dim1+2)*sizeof(int*));
+    ccidx=(int **)malloc((dim1+2)*sizeof(int*));
     if(ccidx==NULL){
         printf("out of memory\n");
     }
     for (i=0;i<(dim1+2);i++) {
-        ccidx[i]=malloc((dim1+2)*sizeof(int));
+        ccidx[i]=(int *)malloc((dim1+2)*sizeof(int));
         if (ccidx[i]==NULL) {
             printf("out of memory\n");
         }
     }
-    midx=malloc((dim1+2)*sizeof(int*));
-    nidx=malloc((dim1+2)*sizeof(int*));
+    midx=(int *)malloc((dim1+2)*sizeof(int*));
+    nidx=(int *)malloc((dim1+2)*sizeof(int*));
 
 
     bzero=61.789; // average B-field 
@@ -166,6 +175,17 @@ int main () {
     difrms=0.;
     dzrms=0.;
     ffrms=0.;
+    //open Root tree
+    TFile *outfile = new TFile("RootOut52.root","recreate");
+    TTree *Tree_Measured = new TTree ("Tree_Measured", "Measured field");
+    Tree_Measured->Branch("Phi",&phi,"Phi/D");
+    Tree_Measured->Branch("BField",&B_Measure,"Prb1/D:Prb2:Prb3:Prb4:Prb5:Prb6:Prb7:Prb8:Prb9:Prb10:Prb11:Prb12:Prb13:Prb14:Prb15:Prb16:Prb17:Prb18:Prb19:Prb20:Prb21:Prb22:Prb23:Prb24:Prb25");
+    TTree *Tree_Fit = new TTree ("Tree_Fit", "Fitted field");
+    Tree_Fit->Branch("Phi",&phi,"Phi/D");
+    Tree_Fit->Branch("BField",&B_Fit,"Prb1/D:Prb2:Prb3:Prb4:Prb5:Prb6:Prb7:Prb8:Prb9:Prb10:Prb11:Prb12:Prb13:Prb14:Prb15:Prb16:Prb17:Prb18:Prb19:Prb20:Prb21:Prb22:Prb23:Prb24:Prb25");
+    Tree_Fit->Branch("BFieldZ",&B_Fit,"Prb1/D:Prb2:Prb3:Prb4:Prb5:Prb6:Prb7:Prb8:Prb9:Prb10:Prb11:Prb12:Prb13:Prb14:Prb15:Prb16:Prb17:Prb18:Prb19:Prb20:Prb21:Prb22:Prb23:Prb24:Prb25");
+    Tree_Fit->Branch("BFieldR",&B_Fit,"Prb1/D:Prb2:Prb3:Prb4:Prb5:Prb6:Prb7:Prb8:Prb9:Prb10:Prb11:Prb12:Prb13:Prb14:Prb15:Prb16:Prb17:Prb18:Prb19:Prb20:Prb21:Prb22:Prb23:Prb24:Prb25");
+    Tree_Fit->Branch("BFieldPhi",&B_Fit,"Prb1/D:Prb2:Prb3:Prb4:Prb5:Prb6:Prb7:Prb8:Prb9:Prb10:Prb11:Prb12:Prb13:Prb14:Prb15:Prb16:Prb17:Prb18:Prb19:Prb20:Prb21:Prb22:Prb23:Prb24:Prb25");
     for (id=1;id<=nphi;id++) { // loop over azimuthal slices 
         fscanf (datafile, "%lg", &dataread[0]); // read azimuthal angle in degrees 
         phi=dataread[0]*M_PI/180.;
@@ -217,9 +237,12 @@ int main () {
             bfield[prb][1]=bz;
             bfield[prb][2]=br;
             bfield[prb][3]=bphi;
+	    B_Fit.Prb[prb-1]=bsize;
+	    B_ZFit.Prb[prb-1]=bz;
+	    B_RFit.Prb[prb-1]=br;
+	    B_PhiFit.Prb[prb-1]=bphi;
+	    B_Measure.Prb[prb-1]=dataread[prb];
 	    //Output
-	    if(prb==1)fprintf(outputR,"%.17g %.17g %.17g\n",phi,dataread[prb],bfield[prb][2]);
-	    if(prb==1)fprintf(outputPhi,"%.17g %.17g %.17g\n",phi,dataread[prb],bfield[prb][3]);
 	    fprintf(output,"%.17g %d %.17g %.17g %.17g %.17g %.17g\n",phi,prb,dataread[prb],bfield[prb][1],bfield[prb][2],bfield[prb][3],bfield[prb][4]);
             rmsd=(dataread[prb]-bfield[prb][4])*(dataread[prb]-bfield[prb][4]);
             difrms+=rmsd;
@@ -229,7 +252,13 @@ int main () {
         }
         printf("Slice %d (phi=%.17g) of %d done (%.17g, %.17g, %.17g) \n",
                 id, phi, nphi, difrms, dzrms, ffrms);
+	Tree_Measured->Fill();
+	Tree_Fit->Fill();
     }
+    Tree_Measured->Write();
+    Tree_Fit->Write();
+    outfile->Close();
+
     difrms=difrms/bzero/bzero/nphi/25;
     dzrms=dzrms/bzero/bzero/nphi/25;
     ffrms=ffrms/bzero/bzero/nphi/25;
@@ -239,91 +268,6 @@ int main () {
     printf("RMS fluctuation = %.17g ppm \n", ffrms);
     printf("RMS difference (lin. approx.) = %.17g ppm \n", dzrms);
     printf("RMS difference (real) = %.17g ppm \n", difrms);
-    /* calculate coeffs */
-/*
-    cterm=0.;
-    printf ("\nComputing b-fields\n");
-    for (id=1;id<=ndata;id++) { // loop over azimuthal slices 
-        fscanf (input, "%Lf", &datatmp); // read azimuthal angle in degrees 
-        phi=datatmp*M_PI/180.;
-        for (prb=1;prb<=25;prb++){ // loop over 25 probes 
-            zt=zeta[prb];  // zeta coordinate at probe 
-            et=eta[prb];  // eta coordinate at probe 
-            wgt=sqrt(cosh(zt)-cos(et)); // weight func in toroidal coordinates 
-            br=0.; bz=0.; bphi=0.;
-            for (i=1;i<=dim1;i++){
-                md=ccidx[i][1]; // m index 
-                nd=ccidx[i][2]; // n index 
-// LegendreQ at probe
-                legq=LegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
-// Derivative of LegendreQ at probe
-                dleq=DLegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
-            }
-            idx=0;
-// for each data end
-        }
-    printf ("\nSlice %d (phi=%Lf) done\n", id, phi);
-    }
-*/
-/*
-
-    FILE *out0;
-
-    out0 = fopen ("chisqc.m", "w");
-
-    fprintf(out0, "NMax=%d;\n", nmax);
-    fprintf(out0, "MMax=%d;\n", mmax);
-    fprintf(out0, "csqc0=%.20Lf;\n", cterm);
-    fprintf(out0, "csqc=(%.20Lf)+\n", cterm);
-
-    for (i=1;i<=dim1;i++) {
-        fprintf(out0, "(%.20Lf)*CC[%d,%d]+ \n", \
-                cc[i],ccidx[i][1],ccidx[i][2]);
-        if (ccidx[i][2]!=0) fprintf(out0, "(%.20Lf)*CS[%d,%d]+ \n", \
-                cs[i],ccidx[i][1],ccidx[i][2]);
-        if (ccidx[i][1]!=0) fprintf(out0, "(%.20Lf)*SC[%d,%d]+ \n", \
-                sc[i],ccidx[i][1],ccidx[i][2]);
-        if (ccidx[i][1]!=0&&ccidx[i][2]!=0) fprintf(out0, \
-                "(%.20Lf)*SS[%d,%d]+ \n", \
-                ss[i],ccidx[i][1],ccidx[i][2]);
-    }
-    for (i=1;i<=dim2;i++) {
-        fprintf(out0, "(%.20Lf)*CC[%d,%d]*CC[%d,%d]+ \n",\
-        cccc[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][4]!=0) fprintf(out0, \
-                    "(%.20Lf)*CC[%d,%d]*CS[%d,%d]+ \n",\
-        cccs[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][3]!=0) fprintf(out0, \
-                    "(%.20Lf)*CC[%d,%d]*SC[%d,%d]+ \n",\
-        ccsc[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][3]!=0&&ccccidx[i][4]!=0) fprintf(out0, \
-                    "(%.20Lf)*CC[%d,%d]*SS[%d,%d]+ \n",\
-        ccss[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][2]!=0&&ccccidx[i][4]!=0) fprintf(out0, \
-                    "(%.20Lf)*CS[%d,%d]*CS[%d,%d]+ \n",\
-        cscs[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][2]!=0&&ccccidx[i][3]!=0) fprintf(out0, \
-                    "(%.20Lf)*CS[%d,%d]*SC[%d,%d]+ \n",\
-        cssc[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][2]!=0&&ccccidx[i][3]!=0&&ccccidx[i][4]!=0) fprintf(out0, \
-                    "(%.20Lf)*CS[%d,%d]*SS[%d,%d]+ \n",\
-        csss[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][1]!=0&&ccccidx[i][3]!=0) fprintf(out0, \
-                    "(%.20Lf)*SC[%d,%d]*SC[%d,%d]+ \n",\
-        scsc[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][1]!=0&&ccccidx[i][3]!=0&&ccccidx[i][4]!=0) fprintf(out0, \
-                    "(%.20Lf)*SC[%d,%d]*SS[%d,%d]+ \n",\
-        scss[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][1]!=0&&ccccidx[i][2]&& \
-            ccccidx[i][3]!=0&&ccccidx[i][4]!=0) fprintf(out0, \
-                    "(%.20Lf)*SS[%d,%d]*SS[%d,%d]",\
-        ssss[i], ccccidx[i][1],ccccidx[i][2],ccccidx[i][3],ccccidx[i][4]);
-        if (ccccidx[i][1]!=0&&ccccidx[i][2]&& \
-            ccccidx[i][3]!=0&&ccccidx[i][4]!=0&&i<dim2) fprintf(out0, "+ \n");
-    }
-    fprintf(out0, ";");
-    fclose(out0);
-*/
 
     free(cc);
     free(cs);

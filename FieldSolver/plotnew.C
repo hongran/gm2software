@@ -31,13 +31,24 @@
   int iGraph=0;
   for (int i=0;i<196050;i++){
     input>>phi>>Nprb>>B_read>>BZ>>BR>>BPhi>>B_cal;
-    if (Nprb==1){
+    if (Nprb==20){
+      BPhi/=61.74;
+      BR/=61.74;
+      BPhi*=1000000;
+      BR*=1000000;
+      B_read-=61.74;
+      B_cal-=61.74;
+      B_read/=61.74;
+      B_cal/=61.74;
+      B_read*=1000000;
+      B_cal*=1000000;
+
       gB_read->SetPoint(iGraph,phi,B_read);
       gB_cal->SetPoint(iGraph,phi,B_cal);
       gB_Phi->SetPoint(iGraph,phi,BPhi);
       gB_R->SetPoint(iGraph,phi,BR);
     }
-    if (Nprb==1)iGraph++;
+    if (Nprb==20)iGraph++;
   }
   input.close();
 
@@ -50,8 +61,8 @@
   TCanvas c1;
   gB_read->Draw("APL");
   gB_read->SetTitle("B field measured vs fit");
-  gB_read->GetYaxis()->SetRangeUser(61.78,61.805);
-  gB_read->GetYaxis()->SetTitle("Frequency Readout [MHz]");
+//  gB_read->GetYaxis()->SetRangeUser(-200,200);
+  gB_read->GetYaxis()->SetTitle("ppm");
   gB_read->GetYaxis()->SetTitleOffset(1.5);
   gB_read->GetXaxis()->SetTitle("Phi [rad]");
   gB_cal->Draw("samePL");
@@ -66,7 +77,7 @@
   TCanvas c2;
   gB_Phi->Draw("APL");
   gB_Phi->SetTitle("B_Phi field fit");
-  gB_Phi->GetYaxis()->SetTitle("Frequency Readout [MHz]");
+  gB_Phi->GetYaxis()->SetTitle("ppm");
   gB_Phi->GetYaxis()->SetTitleOffset(1.5);
   gB_Phi->GetXaxis()->SetTitle("Phi [rad]");
 
@@ -75,7 +86,7 @@
   TCanvas c3;
   gB_R->Draw("APL");
   gB_R->SetTitle("B_R field fit");
-  gB_R->GetYaxis()->SetTitle("Frequency Readout [MHz]");
+  gB_R->GetYaxis()->SetTitle("ppm");
   gB_R->GetYaxis()->SetTitleOffset(1.5);
   gB_R->GetXaxis()->SetTitle("Phi [rad]");
 

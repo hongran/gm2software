@@ -40,7 +40,7 @@ LIS_INT main(LIS_INT argc, char* argv[])
     double tp;
     double tpl;
     FILE *mtrx, *vctr, *names, *coeffs, *vecdim;
-    mtrx = fopen ("outmatrix.txt", "r");
+    mtrx = fopen ("outmatrix.dat", "r");
     vecdim = fopen ("vecdim.txt", "r");
     fscanf (vecdim, "%d", &mdim);
     ndim=mdim;
@@ -75,7 +75,8 @@ LIS_INT main(LIS_INT argc, char* argv[])
     vn=0;
     for (i=0;i<mdim;i++) {
         for (j=0;j<mdim;j++) {
-            fscanf (mtrx, "%Lf", &tpl);
+            //fscanf (mtrx, "%lg", &tpl);
+	      fread(&tpl,sizeof(double),1,mtrx);
 //            printf("%f\n",tp);
             if(i>=j) {
                 tt=tpl;
@@ -85,8 +86,7 @@ LIS_INT main(LIS_INT argc, char* argv[])
         }
         vn++;
         if(vn==11) {
-            printf("row %d loaded (%.2f %)\n",i, \
-                     100.*((1.*i+1.)*(1.*i+1.))/(1.*ie)/(1.*ie));
+            printf("row %d loaded (%.2f % )\n",i,100.*((1.*i+1.)*(1.*i+1.))/(1.*ie)/(1.*ie));
             vn=1;
         }
     }
@@ -103,9 +103,10 @@ LIS_INT main(LIS_INT argc, char* argv[])
 
     lis_vector_duplicate(A,&b);
     lis_vector_duplicate(A,&x);
-    vctr = fopen ("outvector.txt", "r");
+    vctr = fopen ("outvector.dat", "r");
     for (i=0;i<mdim;i++) {
-        fscanf (vctr, "%Lf", &tpl);
+    //    fscanf (vctr, "%lg", &tpl);
+        fread(&tpl,sizeof(double),1,vctr);
         tt=tpl;
         lis_vector_set_value(LIS_INS_VALUE,i,tt,b);
     }

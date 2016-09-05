@@ -273,24 +273,28 @@ int main (int argc, char **argv) {
     }
     vecdim=0;
     for (i=1;i<=dim1;i++) {
-        vecdim++;
-        fprintf(out1, "%.17g\n", cc[0][i]);
-        if(sinz[4*(i-1)+2]!=0) {
-            vecdim++;
-            fprintf(out1, "%.17g\n", cs[0][i]);
-        }
-        if(sinz[4*(i-1)+3]!=0) {
-            vecdim++;
-            fprintf(out1, "%.17g\n", sc[0][i]);
-        }
-        if(sinz[4*(i-1)+4]!=0) {
-            vecdim++;
-            fprintf(out1, "%.17g\n", ss[0][i]);
-        }
+      vecdim++;
+      //fprintf(out1, "%.17g\n", cc[0][i]);
+      fwrite(&(cc[0][i]),sizeof(double),1,out1);
+      if(sinz[4*(i-1)+2]!=0) {
+	vecdim++;
+	//fprintf(out1, "%.17g\n", cs[0][i]);
+	fwrite(&(cs[0][i]),sizeof(double),1,out1);
+      }
+      if(sinz[4*(i-1)+3]!=0) {
+	vecdim++;
+	//fprintf(out1, "%.17g\n", sc[0][i]);
+	fwrite(&(sc[0][i]),sizeof(double),1,out1);
+      }
+      if(sinz[4*(i-1)+4]!=0) {
+	vecdim++;
+	//fprintf(out1, "%.17g\n", ss[0][i]);
+	fwrite(&(ss[0][i]),sizeof(double),1,out1);
+      }
     }
     id=0;
     for (i=1;i<=dim2x;i++) {
-        if(sinz[i]!=0) {
+      if(sinz[i]!=0) {
             id++;
             vecidx[id]=i;
         }
@@ -299,7 +303,8 @@ int main (int argc, char **argv) {
     for (i=1;i<=vecdim;i++) {
         for (j=1;j<=vecdim;j++) {
             vecc++;
-            fprintf(out0, "%.17g\n", matrix[0][vecidx[i]][vecidx[j]]);
+    //        fprintf(out0, "%.17g\n", matrix[0][vecidx[i]][vecidx[j]]);
+	    fwrite(&(matrix[0][vecidx[i]][vecidx[j]]),sizeof(double),1,out0);
         }
     }
     fprintf(outd, "%d\n", vecdim);
@@ -386,7 +391,7 @@ double DLegendreQ(int m, int n, double z){
 /* coordinate transformation r, z -> zeta */
 double zetaf(double rho, double z, double r0){
     double zetax;
-    zetax=atanhl(2.*rho*r0/(rho*rho+r0*r0+z*z));
+    zetax=atanh(2.*rho*r0/(rho*rho+r0*r0+z*z));
     return zetax;
 }
 
@@ -424,6 +429,29 @@ void cpx(int procid, int **procdec, double **datain,
     int md, nd, i, id, prb, j, ix, jx, ixx;
     double legq, dleq;
     printf("Starting thread %d\n",procid);
+
+    //Calculate legq and dleq table
+    double **Tlegq;
+    double **Tdleq;
+    Tlegq=malloc((dim1+1)*sizeof(double*));
+    Tdleq=malloc((dim1+1)*sizeof(double*));
+    for (int il=0;il<=dim1;il++) {
+      Tlegq[il]=malloc(26*sizeof(double));
+      Tdleq[il]=malloc(26*sizeof(double));
+    }
+    for (prb=1;prb<=25;prb++){ // loop over 25 probes 
+      zt=zeta[prb];  // zeta coordinate at probe 
+      for (i=1;i<=dim1;i++){
+	md=ccidx[i][1]; // m index 
+	nd=ccidx[i][2]; // n index 
+	/* LegendreQ at probe */
+	Tlegq[i][prb]=LegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
+	/* Derivative of LegendreQ at probe */
+	Tdleq[i][prb]=DLegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
+      }
+    }
+    //Table calculation complete
+
     for (ixx=1;ixx<=ndatap;ixx++) { // loop over azimuthal slices 
         id=procdec[procid+1][ixx];
         if (id!=0) { 
@@ -435,37 +463,45 @@ void cpx(int procid, int **procdec, double **datain,
             zt=zeta[prb];  // zeta coordinate at probe 
             et=eta[prb];  // eta coordinate at probe 
             wgt=sqrt(cosh(zt)-cos(et)); // weight func in toroidal coordinates 
+	    //
+	    double Sinh_zt = sinh(zt);
+	    double Sin_et = sin(et);
+	    double Cosh_zt = cosh(zt);
+	    double Cos_et = cos(et);
+	    //
             for (i=1;i<=dim1;i++){
                 md=ccidx[i][1]; // m index 
                 nd=ccidx[i][2]; // n index 
 /* LegendreQ at probe */
-                legq=LegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
+                //legq=LegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
+		legq=Tlegq[i][prb];
 /* Derivative of LegendreQ at probe */
-                dleq=DLegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
+                //dleq=DLegendreQ(md,nd,zeta[prb])/LegendreQ(md,nd,zt0);
+		dleq=Tdleq[i][prb];
 // CC(m,n) coefficient 
-                tcc[i]=-sinhl(zt)*sin(et)/rr*cos(nd*phi)*cos(md*et)*  \
-                    (sinhl(zt)/2./wgt*legq+wgt*dleq) \
-                    -(1.-coshl(zt)*cos(et))/rr* \
+                tcc[i]=-Sinh_zt*Sin_et/rr*cos(nd*phi)*cos(md*et)*  \
+                    (Sinh_zt/2./wgt*legq+wgt*dleq) \
+                    -(1.-Cosh_zt*Cos_et)/rr* \
                     (-md*cos(nd*phi)*sin(md*et)*wgt*legq \
-                     +cos(nd*phi)*cos(md*et)*sin(et)/2./wgt*legq);
+                     +cos(nd*phi)*cos(md*et)*Sin_et/2./wgt*legq);
 // CS(m,n) coefficient 
-                tcs[i]=-sinhl(zt)*sin(et)/rr*sin(nd*phi)*cos(md*et)* \
-                    (sinhl(zt)/2./wgt*legq+wgt*dleq) \
-                    -(1.-coshl(zt)*cos(et))/rr* \
+                tcs[i]=-Sinh_zt*Sin_et/rr*sin(nd*phi)*cos(md*et)* \
+                    (Sinh_zt/2./wgt*legq+wgt*dleq) \
+                    -(1.-Cosh_zt*Cos_et)/rr* \
                     (-md*sin(nd*phi)*sin(md*et)*wgt*legq \
-                     +sin(nd*phi)*cos(md*et)*sin(et)/2./wgt*legq);
+                     +sin(nd*phi)*cos(md*et)*Sin_et/2./wgt*legq);
 // SC(m,n) coefficient 
-                tsc[i]=-sinhl(zt)*sin(et)/rr*cos(nd*phi)*sin(md*et)* \
-                    (sinhl(zt)/2./wgt*legq+wgt*dleq) \
-                    -(1.-coshl(zt)*cos(et))/rr* \
+                tsc[i]=-Sinh_zt*Sin_et/rr*cos(nd*phi)*sin(md*et)* \
+                    (Sinh_zt/2./wgt*legq+wgt*dleq) \
+                    -(1.-Cosh_zt*Cos_et)/rr* \
                     (md*cos(nd*phi)*cos(md*et)*wgt*legq \
-                     +cos(nd*phi)*sin(md*et)*sin(et)/2./wgt*legq);
+                     +cos(nd*phi)*sin(md*et)*Sin_et/2./wgt*legq);
 // SS(m,n) coefficient 
-                tss[i]=-sinhl(zt)*sin(et)/rr*sin(nd*phi)*sin(md*et)* \
-                    (sinhl(zt)/2./wgt*legq+wgt*dleq) \
-                    -(1.-coshl(zt)*cos(et))/rr* \
+                tss[i]=-Sinh_zt*Sin_et/rr*sin(nd*phi)*sin(md*et)* \
+                    (Sinh_zt/2./wgt*legq+wgt*dleq) \
+                    -(1.-Cosh_zt*Cos_et)/rr* \
                     (md*sin(nd*phi)*cos(md*et)*wgt*legq \
-                     +sin(nd*phi)*sin(md*et)*sin(et)/2./wgt*legq);
+                     +sin(nd*phi)*sin(md*et)*Sin_et/2./wgt*legq);
             } // define tcc loop end
             for (i=1;i<=dim1;i++){
                 for (j=1;j<=dim1;j++) {
@@ -509,6 +545,13 @@ void cpx(int procid, int **procdec, double **datain,
     free(tcs);
     free(tsc);
     free(tss);
+    for (int il=0;il<=dim1;il++) {
+      free(Tlegq[il]);
+      free(Tdleq[il]);
+    }
+    free(Tlegq);
+    free(Tdleq);
+
 //    return 0;
 }
 
