@@ -180,7 +180,7 @@ LIBRARIES += -lcublas_static -lcusparse_static -lculibos
 # Target rules
 all: build
 
-build: makematrix solvematrix
+build: makematrix solvematrix calculatebfield
 
 makematrix.o:makematrix.cu
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
@@ -193,6 +193,12 @@ solvematrix.o:solvematrix.cpp
 
 solvematrix: solvematrix.o
 	$(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
+
+calculatebfield.o: calculatebfield.cu
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
+
+calculatebfield: calculatebfield.o
+	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES) 
 
 clean:
 	rm -f makematrix makematrix.o solvematrix solvematrix.o
