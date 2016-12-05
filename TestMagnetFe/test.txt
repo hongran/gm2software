@@ -1,0 +1,13 @@
+Frontend name          :     gm2trolleyfe
+Event buffer size      :     1000000
+User max event size    :     10000
+User max frag. size    :     5242880
+# of events per buffer :     100
+
+Connect to experiment gm2Trolley...
+OK
+Init hardware...
+buf is 
+connection failed 
+OK
+[2J[1;1Hgm2trolleyfe connected to <local>. Press "!" to exit[2;1H================================================================================[3;1HRun status:   Stopped[3;26HRun number 5   [4;1H================================================================================[5;1HEquipment     Status     Events     Events/sec Rate[B/s]  ODB->FE    FE->ODB[6;1H--------------------------------------------------------------------------------[7;1HGalil[1;73H16:11:53[7;15HOK       [7;26H0      [7;37H0.0      [7;48H0.0      [7;59H0       [7;70H0       [8;1H[1;73H16:11:53[7;15HOK       [7;26H0      [7;37H0.0      [7;48H0.0      [7;59H0       [7;70H0       [8;1H[1;73H16:11:56[7;15HOK       [7;26H0      [7;37H0.0      [7;48H0.0      [7;59H0       [7;70H0       [8;1H[1;73H16:11:59[7;15HOK       [7;26H0      [7;37H0.0      [7;48H0.0      [7;59H0       [7;70H0       [8;1H[2J[1;1Hgm2trolleyfe connected to <local>. Press "!" to exit[2;1H================================================================================[3;1HRun status:   Stopped[3;26HRun number 5   [4;1H================================================================================[5;1HEquipment     Status     Events     Events/sec Rate[B/s]  ODB->FE    FE->ODB[6;1H--------------------------------------------------------------------------------[7;1HGalil[1;73H16:11:59[7;15HOK       [7;26H0      [7;37H0.0      [7;48H0.0      [7;59H0       [7;70H0       [8;1H[2J[1;1HFrontend shut down.[2;1H
